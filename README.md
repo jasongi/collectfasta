@@ -52,11 +52,6 @@ INSTALLED_APPS = (
 **Note:** `'collectfasta'` must come before `'django.contrib.staticfiles'` in
 `INSTALLED_APPS`.
 
-**Note:** The boto strategy will set `preload_metadata` on the remote storage
-to `True`, see [#30][issue-30].
-
-[issue-30]: https://github.com/antonagestam/collectfast/issues/30
-
 ##### Upload Strategies
 
 Collectfasta Strategy|Storage Backend
@@ -165,7 +160,7 @@ make test
 Run test against localstack/fake-gcs-server:
 
 ```bash
-make test-with-docker
+make test-docker
 ```
 
 Code quality tools are broken out from test requirements because some of them

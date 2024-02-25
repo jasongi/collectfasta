@@ -5,6 +5,16 @@ import pytest
 from django.conf import settings
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--speedtest",
+        action="store_true",
+        dest="speedtest",
+        default=False,
+        help="run the test on many files (not for live environments",
+    )
+
+
 @pytest.fixture(autouse=True)
 def create_test_directories():
     paths = (settings.STATICFILES_DIRS[0], settings.STATIC_ROOT, settings.MEDIA_ROOT)

@@ -4,8 +4,13 @@ docker-up:
 	docker compose up -d --wait
 test:
 	 pytest -svv
-test-with-docker: docker-up
+
+test-docker: docker-up
 	pytest -svv; docker compose down
+
+test-speed: docker-up
+	pytest -x --speedtest -m speed_test -svv; docker compose down
+
 test-skip-live:
 	SKIP_LIVE_TESTS=true pytest
 

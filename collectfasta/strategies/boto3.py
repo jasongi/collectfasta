@@ -8,6 +8,9 @@ from storages.utils import safe_join
 from collectfasta import settings
 
 from .base import CachingHashStrategy
+from botocore.exceptions import ClientError
+from storages.utils import clean_name
+from storages.backends.s3boto3 import S3Boto3Storage
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +18,29 @@ logger = logging.getLogger(__name__)
 class Boto3Strategy(CachingHashStrategy[S3Boto3Storage]):
     def __init__(self, remote_storage: S3Boto3Storage) -> None:
         super().__init__(remote_storage)
-        self.remote_storage.preload_metadata = True
+        self.wrap_remote()
+        # self.remote_storage.preload_metadata = True
         self.use_gzip = settings.aws_is_gzipped
+        self._entries = None
+
+    def wrap_remote(self):
+        if hasattr(self.remote_storage, "bucket"):
+            self.original_exists = self.remote_storage.exists
+            self.remote_storage.exists = (
+                lambda name: name in self._entries or self.original_exists(name)
+            )
+            self.preload_metadata()
+
+    def preload_metadata(self) -> None:
+        try:
+            self._entries = {
+                entry.key: entry
+                for entry in self.remote_storage.bucket.objects.filter(
+                    Prefix=self.remote_storage.location
+                )
+            }
+        except ClientError:
+            logger.debug("Error on remote metadata request", exc_info=True)
 
     def _normalize_path(self, prefixed_path: str) -> str:
         path = str(safe_join(self.remote_storage.location, prefixed_path))

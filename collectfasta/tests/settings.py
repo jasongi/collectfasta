@@ -38,7 +38,12 @@ COLLECTFASTA_STRATEGY = "collectfasta.strategies.boto3.Boto3Strategy"
 COLLECTFASTA_DEBUG = True
 
 GZIP_CONTENT_TYPES = ("text/plain",)
-AWS_IS_GZIPPED = True
+AWS_IS_GZIPPED = False
+AWS_QUERYSTRING_AUTH = False
+AWS_DEFAULT_ACL = None
+S3_USE_SIGV4 = True
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+
 # AWS
 AWS_STORAGE_BUCKET_NAME = "collectfasta"
 

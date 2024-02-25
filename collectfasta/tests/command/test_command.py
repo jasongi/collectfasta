@@ -5,15 +5,18 @@ from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings as override_django_settings
 
 from collectfasta.management.commands.collectstatic import Command
-from collectfasta.tests.utils import clean_static_dir
+from collectfasta.tests.utils import clean_static_dir, make_1000_files
 from collectfasta.tests.utils import create_static_file
 from collectfasta.tests.utils import live_test
+from collectfasta.tests.utils import speed_test
+from collectfasta.tests.utils import make_100_files
 from collectfasta.tests.utils import make_test
 from collectfasta.tests.utils import many
 from collectfasta.tests.utils import override_setting
 from collectfasta.tests.utils import override_storage_attr
-
 from .utils import call_collectstatic
+import timeit
+from django.test.utils import override_settings
 
 aws_backend_confs = {
     "boto3": override_django_settings(
@@ -25,8 +28,7 @@ aws_backend_confs = {
         COLLECTFASTA_STRATEGY="collectfasta.strategies.boto3.Boto3Strategy",
     ),
 }
-all_backend_confs = {
-    **aws_backend_confs,
+gcloud_backend_confs = {
     "gcloud": override_django_settings(
         STORAGES={
             "staticfiles": {
@@ -35,6 +37,8 @@ all_backend_confs = {
         },
         COLLECTFASTA_STRATEGY="collectfasta.strategies.gcloud.GoogleCloudStrategy",
     ),
+}
+filesystem_backend_confs = {
     "filesystem": override_django_settings(
         STORAGES={
             "staticfiles": {
@@ -54,9 +58,15 @@ all_backend_confs = {
         ),
     ),
 }
+all_backend_confs = {
+    **aws_backend_confs,
+    **gcloud_backend_confs,
+    **filesystem_backend_confs,
+}
 
 make_test_aws_backends = many(**aws_backend_confs)
 make_test_all_backends = many(**all_backend_confs)
+make_test_cloud_backends = many(**aws_backend_confs, **gcloud_backend_confs)
 
 
 @make_test_all_backends
@@ -78,6 +88,43 @@ def test_threads(case: TestCase) -> None:
     case.assertIn("1 static file copied.", call_collectstatic())
     # file state should now be cached
     case.assertIn("0 static files copied.", call_collectstatic())
+
+
+@make_test_cloud_backends
+@live_test
+@speed_test
+def test_basics_cloud_speed(case: TestCase) -> None:
+    clean_static_dir()
+    make_100_files()
+
+    case.assertIn("100 static files copied", call_collectstatic())
+
+    def collectstatic_one():
+        case.assertIn("1 static file copied", call_collectstatic())
+
+    create_static_file()
+    ittook = timeit.timeit(collectstatic_one, number=1)
+    print(f"it took {ittook} seconds")
+
+
+@make_test_cloud_backends
+@live_test
+@speed_test
+@override_settings(
+    INSTALLED_APPS=["django.contrib.staticfiles"], COLLECTFASTA_STRATEGY=None
+)
+def test_no_collectfasta_cloud_speed(case: TestCase) -> None:
+    clean_static_dir()
+    make_100_files()
+
+    case.assertIn("100 static files copied", call_collectstatic())
+
+    def collectstatic_one():
+        case.assertIn("1 static file copied", call_collectstatic())
+
+    create_static_file()
+    ittook = timeit.timeit(collectstatic_one, number=1)
+    print(f"it took {ittook} seconds")
 
 
 @make_test

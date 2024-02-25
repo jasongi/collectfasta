@@ -36,6 +36,9 @@ jobs:
         run: coverage run -m pytest
       - name: Run tests against docker env
         run: make docker-up && coverage run -m pytest
+      - name: Run speed tests against docker env
+        run: make test-speed
+  
 
   test-3-9:
     runs-on: ubuntu-latest
@@ -68,3 +71,5 @@ jobs:
         run: coverage run -m pytest
       - name: Run tests against docker env
         run: make docker-up && coverage run -m pytest
+      - name: Run speed tests against docker env
+        run: make test-speed

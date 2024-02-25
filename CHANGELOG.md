@@ -5,7 +5,8 @@
 - Rename to collectfasta with new maintainer/repo
 - Remove some deprecated settings
 - Ability to run live tests against localstack/fake GCP instead of the real APIs
-- moved tests to use the STORAGES config
+- refactor tests to use the STORAGES config
+- implement preloading of S3 metadata for boto3 strategy as it was removed by django-storages
 - dropped support for Python 3.6-3.8
 - dropped support for Django < 4.2
 
