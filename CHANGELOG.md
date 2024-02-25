@@ -3,8 +3,8 @@
 ## 2.2.0
 
 - Add `post_copy_hook` and `on_skip_hook` to
-  `collectfast.strategies.base.Strategy`.
-- Add `collectfast.strategies.filesystem.CachingFileSystemStrategy`.
+  `collectfasta.strategies.base.Strategy`.
+- Add `collectfasta.strategies.filesystem.CachingFileSystemStrategy`.
 - Fix a bug where files weren't properly closed when read for hashing.
 - Fix a bug where gzip compression level was inconsistent with S3.
 
@@ -25,9 +25,9 @@
 - Drop support for Python 3.5.
 - Drop support for Django 1.11.
 - Drop support for `storages.backends.s3boto.S3BotoStorage` (remove
-  `collectfast.strategies.boto.BotoStrategy`).
+  `collectfasta.strategies.boto.BotoStrategy`).
 - Drop support for guessing strategies, e.g. require
-  `COLLECTFAST_STRATEGY` to be set.
+  `COLLECTFASTA_STRATEGY` to be set.
 - Package type hints.
 - Support django-storages 1.9+.
 - Validate types of settings.
@@ -36,4 +36,4 @@
 
 For changes in previous versions see [releases on Github][releases].
 
-[releases]: https://github.com/antonagestam/collectfast/releases
+[releases]: https://github.com/jasongi/collectfasta/releases

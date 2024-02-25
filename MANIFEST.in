@@ -1,8 +1,10 @@
 include README.md
 include LICENSE
-include collectfast/py.typed
+include collectfasta/py.typed
 exclude conftest.py
-exclude collectfast/tests/
+exclude collectfasta/tests
+recursive-exclude localstack *
+exclude manage.py
 exclude Makefile
 exclude *.yml
 exclude *.yaml

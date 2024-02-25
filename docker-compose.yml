@@ -1,0 +1,36 @@
+services:
+  localstack-collectfasta:
+    networks:
+      localstack:
+        # Set the container IP address in the 10.0.2.0/24 subnet
+        ipv4_address: 10.0.4.20
+    container_name: "localstack-collectfasta" # Container name in your docker
+    image: localstack/localstack:3
+    # Will download latest version of localstack
+    #image: localstack/localstack-full:latest # Full image support WebUI
+    ports:
+      - "4567:4566" # Default port forward
+      - "9201:4571" # Elasticsearch port forward
+      - "8082:8080" # WebUI port forward
+    environment:
+      - SERVICES=s3 #AWS Services that you want in your localstack
+      - DEBUG=1 # Debug level 1 if you want to logs, 0 if you want to disable
+      - START_WEB=1 # Flag to control whether the Web UI should be started in Docker
+      - LAMBDA_REMOTE_DOCKER=0
+      - DEFAULT_REGION=ap-southeast-2
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - ./localstack:/etc/localstack/init/ready.d
+      - '/var/run/docker.sock:/var/run/docker.sock'
+  gcloudstorage:
+    image: fsouza/fake-gcs-server
+    ports:
+      - '5050:4443'
+    command: -scheme http
+
+networks:
+  localstack:
+    ipam:
+      config:
+        # Specify the subnet range for IP address allocation
+        - subnet: 10.0.4.0/24

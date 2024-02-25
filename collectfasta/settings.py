@@ -18,14 +18,14 @@ def _get_setting(type_: Type[T], key: str, default: T) -> T:
 
 
 debug: Final = _get_setting(
-    bool, "COLLECTFAST_DEBUG", _get_setting(bool, "DEBUG", False)
+    bool, "COLLECTFASTA_DEBUG", _get_setting(bool, "DEBUG", False)
 )
 cache_key_prefix: Final = _get_setting(
-    str, "COLLECTFAST_CACHE_KEY_PREFIX", "collectfast06_asset_"
+    str, "COLLECTFASTA_CACHE_KEY_PREFIX", "collectfasta06_asset_"
 )
-cache: Final = _get_setting(str, "COLLECTFAST_CACHE", "default")
-threads: Final = _get_setting(int, "COLLECTFAST_THREADS", 0)
-enabled: Final = _get_setting(bool, "COLLECTFAST_ENABLED", True)
+cache: Final = _get_setting(str, "COLLECTFASTA_CACHE", "default")
+threads: Final = _get_setting(int, "COLLECTFASTA_THREADS", 0)
+enabled: Final = _get_setting(bool, "COLLECTFASTA_ENABLED", True)
 aws_is_gzipped: Final = _get_setting(bool, "AWS_IS_GZIPPED", False)
 gzip_content_types: Final[Container] = _get_setting(
     tuple,

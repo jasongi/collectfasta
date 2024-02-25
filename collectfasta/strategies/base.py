@@ -20,7 +20,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.files.storage import Storage
 from django.utils.encoding import force_bytes
 
-from collectfast import settings
+from collectfasta import settings
 
 _RemoteStorage = TypeVar("_RemoteStorage", bound=Storage)
 
@@ -105,8 +105,7 @@ class HashStrategy(Strategy[_RemoteStorage], abc.ABC):
         return file_hash
 
     @abc.abstractmethod
-    def get_remote_file_hash(self, prefixed_path: str) -> Optional[str]:
-        ...
+    def get_remote_file_hash(self, prefixed_path: str) -> Optional[str]: ...
 
 
 class CachingHashStrategy(HashStrategy[_RemoteStorage], abc.ABC):

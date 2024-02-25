@@ -3,10 +3,10 @@ from unittest import mock
 from django.contrib.staticfiles.storage import StaticFilesStorage
 from django.test import override_settings as override_django_settings
 
-from collectfast.management.commands.collectstatic import Command
-from collectfast.tests.utils import clean_static_dir
-from collectfast.tests.utils import create_static_file
-from collectfast.tests.utils import override_setting
+from collectfasta.management.commands.collectstatic import Command
+from collectfasta.tests.utils import clean_static_dir
+from collectfasta.tests.utils import create_static_file
+from collectfasta.tests.utils import override_setting
 
 
 class MockPostProcessing(StaticFilesStorage):
@@ -17,7 +17,11 @@ class MockPostProcessing(StaticFilesStorage):
 
 @override_setting("threads", 2)
 @override_django_settings(
-    STATICFILES_STORAGE="collectfast.tests.command.test_post_process.MockPostProcessing"
+    STORAGES={
+        "staticfiles": {
+            "BACKEND": "collectfasta.tests.command.test_post_process.MockPostProcessing",
+        },
+    },
 )
 def test_calls_post_process_with_collected_files() -> None:
     clean_static_dir()

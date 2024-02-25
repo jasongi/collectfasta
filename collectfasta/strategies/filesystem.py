@@ -16,5 +16,4 @@ class FileSystemStrategy(HashStrategy[FileSystemStorage]):
 
 class CachingFileSystemStrategy(
     CachingHashStrategy[FileSystemStorage], FileSystemStrategy
-):
-    ...
+): ...

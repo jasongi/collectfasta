@@ -4,9 +4,9 @@ from unittest import mock
 
 from django.core.files.storage import FileSystemStorage
 
-from collectfast import settings
-from collectfast.strategies.base import CachingHashStrategy
-from collectfast.tests.utils import make_test
+from collectfasta import settings
+from collectfasta.strategies.base import CachingHashStrategy
+from collectfasta.tests.utils import make_test
 
 hash_characters = string.ascii_letters + string.digits
 
@@ -37,7 +37,7 @@ def test_gets_and_invalidates_hash(case: TestCase) -> None:
     expected_hash = "hash"
     mocked = mock.MagicMock(return_value=expected_hash)
     # ignore due to monkey patching
-    strategy.get_remote_file_hash = mocked  # type: ignore[assignment]
+    strategy.get_remote_file_hash = mocked  # type: ignore
 
     # empty cache
     result_hash = strategy.get_cached_remote_file_hash("path", "prefixed_path")

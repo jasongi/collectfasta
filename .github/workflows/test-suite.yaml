@@ -9,15 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.6', '3.7', '3.8']
-        django-version: ['>=2.2,<2.3', '>=3.0,<3.1']
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+        django-version: ['>=4.2,<4.3', '>=5.0,<5.1']
     name: Test Python ${{ matrix.python-version }} Django ${{ matrix.django-version }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: actions/cache@v2
+      - uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('setup.cfg') }}
@@ -27,47 +27,13 @@ jobs:
           pip install --upgrade django'${{ matrix.django-version }}'
           pip install --upgrade -r test-requirements.txt
           pip install .
-      - name: Run all tests
+      - name: Run tests against live env
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          GCLOUD_CREDENTIALS: ${{ secrets.GCLOUD_CREDENTIALS }}
-        if: github.event_name == 'push' && github.repository == 'antonagestam/collectfast'
+          GCLOUD_API_CREDENTIALS_BASE64: ${{ secrets.GCLOUD_API_CREDENTIALS_BASE64 }}
+        if: github.event_name == 'push' && github.repository == 'jasongi/collectfasta'
         run: coverage run -m pytest
-      - name: Run non-live tests
-        env:
-          SKIP_LIVE_TESTS: true
-        if: github.event_name != 'push' || github.repository != 'antonagestam/collectfast'
-        run: coverage run -m pytest
-      - name: Install Code Climate Test Reporter
-        run: |
-          curl -vsL https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-          chmod +x ./cc-test-reporter
-      - name: Format coverage
-        run: |
-          filename='coverage-py${{ matrix.python-version }}-dj'$(python -c 'import django;print(django.__version__)')'.json'
-          coverage xml
-          ./cc-test-reporter format-coverage -o "$filename"
-          echo "##[set-output name=filename;]${filename}"
-        id: format_coverage
-      - uses: actions/upload-artifact@v1
-        with:
-          name: coverage
-          path: ${{ steps.format_coverage.outputs.filename }}
-  report-coverage:
-    name: Send Code Climate Coverage
-    runs-on: ubuntu-latest
-    needs: [test]
-    steps:
-      - name: Install Code Climate Test Reporter
-        run: |
-          curl -vsL https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-          chmod +x ./cc-test-reporter
-      - uses: actions/download-artifact@v1
-        with:
-          name: coverage
-      - env:
-          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
-        run: |
-          ./cc-test-reporter sum-coverage --output - coverage/coverage-*.json \
-            | ./cc-test-reporter upload-coverage --debug --input -
+      - name: Run tests against docker env
+        if: github.event_name != 'push' || github.repository != 'jasongi/collectfasta'
+        run: make docker-up && coverage run -m pytest

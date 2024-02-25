@@ -13,17 +13,37 @@ from typing import cast
 import pytest
 from django.conf import settings as django_settings
 from django.utils.module_loading import import_string
+from storages.backends.gcloud import GoogleCloudStorage
 from typing_extensions import Final
 
-from collectfast import settings
+from collectfasta import settings
 
-live_test = pytest.mark.skipif(
-    os.environ.get("SKIP_LIVE_TESTS") == "true", reason="not running live tests"
-)
+live_test = pytest.mark.live_test
 
 static_dir: Final = pathlib.Path(django_settings.STATICFILES_DIRS[0])
 
 F = TypeVar("F", bound=Callable[..., Any])
+
+
+def get_fake_client():
+    from google.api_core.client_options import ClientOptions
+    from google.auth.credentials import AnonymousCredentials
+    from google.cloud import storage
+
+    client = storage.Client(
+        credentials=AnonymousCredentials(),
+        project="test",
+        client_options=ClientOptions(api_endpoint=django_settings.GS_CUSTOM_ENDPOINT),
+    )
+    return client
+
+
+class GoogleCloudStorageTest(GoogleCloudStorage):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if django_settings.GS_CUSTOM_ENDPOINT:
+            # Use the fake client if we are using the fake endpoint
+            self._client = get_fake_client()
 
 
 def make_test(func: F) -> Type[unittest.TestCase]:
@@ -41,7 +61,7 @@ def make_test(func: F) -> Type[unittest.TestCase]:
     return case
 
 
-def test_many(**mutations: Callable[[F], F]) -> Callable[[F], Type[unittest.TestCase]]:
+def many(**mutations: Callable[[F], F]) -> Callable[[F], Type[unittest.TestCase]]:
     def test(func: F) -> Type[unittest.TestCase]:
         """
         Creates a class that inherits from `unittest.TestCase` with the decorated
@@ -98,8 +118,11 @@ def override_storage_attr(name: str, value: Any) -> Callable[[F], F]:
     def decorator(fn: F) -> F:
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
-            storage = import_string(django_settings.STATICFILES_STORAGE)
-            original = getattr(storage, name)
+            storage = import_string(django_settings.STORAGES["staticfiles"]["BACKEND"])
+            if hasattr(storage, name):
+                original = getattr(storage, name)
+            else:
+                original = None
             setattr(storage, name, value)
             try:
                 return fn(*args, **kwargs)

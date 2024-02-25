@@ -4,43 +4,59 @@ from unittest import mock
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings as override_django_settings
 
-from collectfast.management.commands.collectstatic import Command
-from collectfast.tests.utils import clean_static_dir
-from collectfast.tests.utils import create_static_file
-from collectfast.tests.utils import live_test
-from collectfast.tests.utils import make_test
-from collectfast.tests.utils import override_setting
-from collectfast.tests.utils import override_storage_attr
-from collectfast.tests.utils import test_many
+from collectfasta.management.commands.collectstatic import Command
+from collectfasta.tests.utils import clean_static_dir
+from collectfasta.tests.utils import create_static_file
+from collectfasta.tests.utils import live_test
+from collectfasta.tests.utils import make_test
+from collectfasta.tests.utils import many
+from collectfasta.tests.utils import override_setting
+from collectfasta.tests.utils import override_storage_attr
 
 from .utils import call_collectstatic
 
 aws_backend_confs = {
     "boto3": override_django_settings(
-        STATICFILES_STORAGE="storages.backends.s3boto3.S3Boto3Storage",
-        COLLECTFAST_STRATEGY="collectfast.strategies.boto3.Boto3Strategy",
+        STORAGES={
+            "staticfiles": {
+                "BACKEND": "storages.backends.s3.S3Storage",
+            },
+        },
+        COLLECTFASTA_STRATEGY="collectfasta.strategies.boto3.Boto3Strategy",
     ),
 }
 all_backend_confs = {
     **aws_backend_confs,
     "gcloud": override_django_settings(
-        STATICFILES_STORAGE="storages.backends.gcloud.GoogleCloudStorage",
-        COLLECTFAST_STRATEGY="collectfast.strategies.gcloud.GoogleCloudStrategy",
+        STORAGES={
+            "staticfiles": {
+                "BACKEND": "collectfasta.tests.utils.GoogleCloudStorageTest",
+            },
+        },
+        COLLECTFASTA_STRATEGY="collectfasta.strategies.gcloud.GoogleCloudStrategy",
     ),
     "filesystem": override_django_settings(
-        STATICFILES_STORAGE="django.core.files.storage.FileSystemStorage",
-        COLLECTFAST_STRATEGY="collectfast.strategies.filesystem.FileSystemStrategy",
+        STORAGES={
+            "staticfiles": {
+                "BACKEND": "django.core.files.storage.FileSystemStorage",
+            },
+        },
+        COLLECTFASTA_STRATEGY="collectfasta.strategies.filesystem.FileSystemStrategy",
     ),
     "cachingfilesystem": override_django_settings(
-        STATICFILES_STORAGE="django.core.files.storage.FileSystemStorage",
-        COLLECTFAST_STRATEGY=(
-            "collectfast.strategies.filesystem.CachingFileSystemStrategy"
+        STORAGES={
+            "staticfiles": {
+                "BACKEND": "django.core.files.storage.FileSystemStorage",
+            },
+        },
+        COLLECTFASTA_STRATEGY=(
+            "collectfasta.strategies.filesystem.CachingFileSystemStrategy"
         ),
     ),
 }
 
-make_test_aws_backends = test_many(**aws_backend_confs)
-make_test_all_backends = test_many(**all_backend_confs)
+make_test_aws_backends = many(**aws_backend_confs)
+make_test_all_backends = many(**all_backend_confs)
 
 
 @make_test_all_backends
@@ -90,7 +106,7 @@ def test_aws_is_gzipped(case: TestCase) -> None:
 
 
 @make_test
-@override_django_settings(STATICFILES_STORAGE=None, COLLECTFAST_STRATEGY=None)
+@override_django_settings(STORAGES={}, COLLECTFASTA_STRATEGY=None)
 def test_raises_for_no_configured_strategy(case: TestCase) -> None:
     with case.assertRaises(ImproperlyConfigured):
         Command._load_strategy()
@@ -98,7 +114,7 @@ def test_raises_for_no_configured_strategy(case: TestCase) -> None:
 
 @make_test_all_backends
 @live_test
-@mock.patch("collectfast.strategies.base.Strategy.post_copy_hook", autospec=True)
+@mock.patch("collectfasta.strategies.base.Strategy.post_copy_hook", autospec=True)
 def test_calls_post_copy_hook(_case: TestCase, post_copy_hook: mock.MagicMock) -> None:
     clean_static_dir()
     path = create_static_file()
@@ -109,7 +125,7 @@ def test_calls_post_copy_hook(_case: TestCase, post_copy_hook: mock.MagicMock) -
 
 @make_test_all_backends
 @live_test
-@mock.patch("collectfast.strategies.base.Strategy.on_skip_hook", autospec=True)
+@mock.patch("collectfasta.strategies.base.Strategy.on_skip_hook", autospec=True)
 def test_calls_on_skip_hook(_case: TestCase, on_skip_hook: mock.MagicMock) -> None:
     clean_static_dir()
     path = create_static_file()

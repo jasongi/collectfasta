@@ -1,16 +1,19 @@
 SHELL := /usr/bin/env bash
 
+docker-up:
+	docker compose up -d --wait
 test:
-	. storage-credentials && pytest
-
+	 pytest -svv
+test-with-docker: docker-up
+	pytest -svv; docker compose down
 test-skip-live:
 	SKIP_LIVE_TESTS=true pytest
 
 test-coverage:
-	. storage-credentials && coverage run --source collectfast -m pytest
+	coverage run --source collectfasta -m pytest
 
 clean:
-	rm -rf Collectfast.egg-info __pycache__ build dist
+	rm -rf Collectfasta.egg-info __pycache__ build dist
 
 build: clean
 	python3 -m pip install --upgrade wheel twine setuptools

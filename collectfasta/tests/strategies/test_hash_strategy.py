@@ -6,8 +6,8 @@ from unittest import mock
 from django.contrib.staticfiles.storage import StaticFilesStorage
 from django.core.files.storage import FileSystemStorage
 
-from collectfast.strategies.base import HashStrategy
-from collectfast.tests.utils import make_test
+from collectfasta.strategies.base import HashStrategy
+from collectfasta.tests.utils import make_test
 
 
 class Strategy(HashStrategy[FileSystemStorage]):

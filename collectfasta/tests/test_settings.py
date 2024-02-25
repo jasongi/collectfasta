@@ -3,7 +3,7 @@ from importlib import reload
 import pytest
 from django.test.utils import override_settings
 
-from collectfast import settings
+from collectfasta import settings
 
 
 @override_settings(FOO=2)
@@ -23,12 +23,12 @@ def test_get_setting_raises_for_invalid_type():
 
 def test_basic_settings():
     with override_settings(
-        COLLECTFAST_DEBUG=True,
-        COLLECTFAST_CACHE="custom",
-        COLLECTFAST_ENABLED=False,
+        COLLECTFASTA_DEBUG=True,
+        COLLECTFASTA_CACHE="custom",
+        COLLECTFASTA_ENABLED=False,
         AWS_IS_GZIPPED=True,
         GZIP_CONTENT_TYPES=("text/css", "text/javascript"),
-        COLLECTFAST_THREADS=0,
+        COLLECTFASTA_THREADS=0,
     ):
         reload(settings)
         assert settings.debug is True
@@ -40,7 +40,7 @@ def test_basic_settings():
 
 
 def test_settings_with_threads():
-    with override_settings(COLLECTFAST_THREADS=22):
+    with override_settings(COLLECTFASTA_THREADS=22):
         reload(settings)
         assert settings.threads == 22
 
@@ -48,11 +48,11 @@ def test_settings_with_threads():
 @pytest.mark.parametrize(
     "django_settings",
     (
-        {"COLLECTFAST_DEBUG": "True"},
-        {"COLLECTFAST_CACHE_KEY_PREFIX": 1},
-        {"COLLECTFAST_CACHE": None},
-        {"COLLECTFAST_THREADS": None},
-        {"COLLECTFAST_ENABLED": 1},
+        {"COLLECTFASTA_DEBUG": "True"},
+        {"COLLECTFASTA_CACHE_KEY_PREFIX": 1},
+        {"COLLECTFASTA_CACHE": None},
+        {"COLLECTFASTA_THREADS": None},
+        {"COLLECTFASTA_ENABLED": 1},
         {"AWS_IS_GZIPPED": "yes"},
         {"GZIP_CONTENT_TYPES": "not tuple"},
     ),
