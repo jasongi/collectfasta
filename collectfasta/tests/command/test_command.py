@@ -1,22 +1,23 @@
+import timeit
 from unittest import TestCase
 from unittest import mock
 
 from django.core.exceptions import ImproperlyConfigured
 from django.test import override_settings as override_django_settings
+from django.test.utils import override_settings
 
 from collectfasta.management.commands.collectstatic import Command
-from collectfasta.tests.utils import clean_static_dir, make_1000_files
+from collectfasta.tests.utils import clean_static_dir
 from collectfasta.tests.utils import create_static_file
 from collectfasta.tests.utils import live_test
-from collectfasta.tests.utils import speed_test
 from collectfasta.tests.utils import make_100_files
 from collectfasta.tests.utils import make_test
 from collectfasta.tests.utils import many
 from collectfasta.tests.utils import override_setting
 from collectfasta.tests.utils import override_storage_attr
+from collectfasta.tests.utils import speed_test
+
 from .utils import call_collectstatic
-import timeit
-from django.test.utils import override_settings
 
 aws_backend_confs = {
     "boto3": override_django_settings(

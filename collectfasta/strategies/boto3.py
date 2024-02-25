@@ -1,16 +1,15 @@
 import logging
+from typing import Any
 from typing import Optional
 
 import botocore.exceptions
+from botocore.exceptions import ClientError
 from storages.backends.s3boto3 import S3Boto3Storage
 from storages.utils import safe_join
 
 from collectfasta import settings
 
 from .base import CachingHashStrategy
-from botocore.exceptions import ClientError
-from storages.utils import clean_name
-from storages.backends.s3boto3 import S3Boto3Storage
 
 logger = logging.getLogger(__name__)
 
@@ -19,16 +18,19 @@ class Boto3Strategy(CachingHashStrategy[S3Boto3Storage]):
     def __init__(self, remote_storage: S3Boto3Storage) -> None:
         super().__init__(remote_storage)
         self.wrap_remote()
-        # self.remote_storage.preload_metadata = True
         self.use_gzip = settings.aws_is_gzipped
-        self._entries = None
+        self._entries: Optional[dict[str, Any]] = None
 
     def wrap_remote(self):
         if hasattr(self.remote_storage, "bucket"):
             self.original_exists = self.remote_storage.exists
-            self.remote_storage.exists = (
-                lambda name: name in self._entries or self.original_exists(name)
-            )
+            # Not a great thing, but the preloading of metadata has been removed from
+            # django-storages https://github.com/jschneier/django-storages/pull/636
+            # this should not be an issue as it is only happening during the
+            # collectstatic command
+            self.remote_storage.exists = lambda name: (
+                self._entries and name in self._entries
+            ) or self.original_exists(name)
             self.preload_metadata()
 
     def preload_metadata(self) -> None:

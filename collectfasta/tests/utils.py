@@ -1,10 +1,10 @@
-from concurrent.futures import ThreadPoolExecutor
 import functools
 import os
 import pathlib
 import random
 import unittest
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from typing import Callable
 from typing import Type
@@ -23,7 +23,11 @@ live_test = pytest.mark.live_test
 
 speed_test_mark = pytest.mark.speed_test
 speed_test_option = pytest.mark.skipif("not config.getoption('speedtest')")
-speed_test = lambda func: speed_test_mark(speed_test_option(func))
+
+
+def speed_test(func):
+    return speed_test_mark(speed_test_option(func))
+
 
 static_dir: Final = pathlib.Path(django_settings.STATICFILES_DIRS[0])
 
@@ -34,13 +38,6 @@ def make_100_files():
     with ThreadPoolExecutor(max_workers=5) as executor:
         for _ in range(100):
             executor.submit(create_big_static_file)
-        executor.shutdown(wait=True)
-
-
-def make_1000_files():
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        for _ in range(1000):
-            executor.submit(create_static_file)
         executor.shutdown(wait=True)
 
 
