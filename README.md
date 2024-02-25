@@ -141,7 +141,7 @@ To run live tests locally you need to provide API credentials to test against as
 ```bash
 export AWS_ACCESS_KEY_ID='...'
 export AWS_SECRET_ACCESS_KEY='...'
-export GCLOUD_API_CREDENTIALS_BASE64='{...}'  # Google Cloud credentials as JSON
+export GCLOUD_API_CREDENTIALS_BASE64='{...}'  # Google Cloud credentials as Base64'd json
 ```
 
 Install test dependencies and target Django version:
