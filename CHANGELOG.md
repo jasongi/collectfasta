@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.0.0
+
+- Rename to collectfasta with new maintainer/repo
+- Remove some deprecated settings
+- Ability to run live tests against localstack/fake GCP instead of the real APIs
+- moved tests to use the STORAGES config
+- dropped support for Python 3.6-3.8
+- dropped support for Django < 4.2
+
 ## 2.2.0
 
 - Add `post_copy_hook` and `on_skip_hook` to
