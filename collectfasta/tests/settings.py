@@ -1,8 +1,11 @@
 import base64
 import os
 import pathlib
+import sys
 import tempfile
 
+# import python and django versions
+from django import get_version
 from google.cloud import storage
 from google.oauth2 import service_account
 
@@ -26,6 +29,9 @@ TEMPLATE_LOADERS = (
 TEMPLATE_DIRS = [str(base_path / "collectfasta/templates")]
 INSTALLED_APPS = ("collectfasta", "django.contrib.staticfiles")
 STATIC_URL = "/staticfiles/"
+# python then django version
+AWS_LOCATION = sys.version.split(" ")[0] + "-" + get_version()
+GS_LOCATION = sys.version.split(" ")[0] + "-" + get_version()
 STATIC_ROOT = str(base_path / "static_root")
 MEDIA_ROOT = str(base_path / "fs_remote")
 STATICFILES_DIRS = [str(base_path / "static")]

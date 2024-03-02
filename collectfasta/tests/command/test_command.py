@@ -28,6 +28,22 @@ aws_backend_confs = {
         },
         COLLECTFASTA_STRATEGY="collectfasta.strategies.boto3.Boto3Strategy",
     ),
+    "boto3manifest": override_django_settings(
+        STORAGES={
+            "staticfiles": {
+                "BACKEND": "storages.backends.s3.S3ManifestStaticStorage",
+            },
+        },
+        COLLECTFASTA_STRATEGY="collectfasta.strategies.boto3.Boto3Strategy",
+    ),
+    "boto3static": override_django_settings(
+        STORAGES={
+            "staticfiles": {
+                "BACKEND": "storages.backends.s3.S3StaticStorage",
+            },
+        },
+        COLLECTFASTA_STRATEGY="collectfasta.strategies.boto3.Boto3Strategy",
+    ),
 }
 gcloud_backend_confs = {
     "gcloud": override_django_settings(

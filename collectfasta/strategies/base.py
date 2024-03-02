@@ -37,6 +37,14 @@ class Strategy(abc.ABC, Generic[_RemoteStorage]):
     def __init__(self, remote_storage: _RemoteStorage) -> None:
         self.remote_storage = remote_storage
 
+    def wrap_storage(self, remote_storage: _RemoteStorage) -> _RemoteStorage:
+        """
+        Wrap the remote storage.
+        Allows you to change the remote storage behavior
+        just for collectstatic.
+        """
+        return remote_storage
+
     @abc.abstractmethod
     def should_copy_file(
         self, path: str, prefixed_path: str, local_storage: Storage

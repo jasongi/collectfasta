@@ -59,6 +59,7 @@ class Command(collectstatic.Command):
         )
         if self.collectfasta_enabled:
             self.strategy = self._load_strategy()(self.storage)
+            self.storage = self.strategy.wrap_storage(self.storage)
         super().set_options(**options)
 
     def collect(self) -> Dict[str, List[str]]:

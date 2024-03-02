@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.0.1
+- Refactor boto3 strategy to wrap the storage classes to re-introduce preloading of metadata
+
 ## 3.0.0
 
 - Rename to collectfasta with new maintainer/repo
