@@ -20,6 +20,9 @@ from storages.utils import setting
 from collectfasta import settings
 
 from .base import CachingHashStrategy
+from .hashing import TwoPassFileSystemStrategy
+from .hashing import TwoPassInMemoryStrategy
+from .hashing import WithoutPrefixMixin
 
 logger = logging.getLogger(__name__)
 
@@ -200,3 +203,15 @@ class Boto3Strategy(CachingHashStrategy[S3Boto3Storage]):
         if settings.threads:
             logger.info("Resetting connection")
             self.remote_storage._connection = None
+
+
+class Boto3WithoutPrefixStrategy(WithoutPrefixMixin, Boto3Strategy):
+    pass
+
+
+class Boto3ManifestMemoryStrategy(TwoPassInMemoryStrategy):
+    second_strategy = Boto3WithoutPrefixStrategy
+
+
+class Boto3ManifestFileSystemStrategy(TwoPassFileSystemStrategy):
+    second_strategy = Boto3WithoutPrefixStrategy

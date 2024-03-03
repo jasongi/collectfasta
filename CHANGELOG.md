@@ -1,4 +1,6 @@
 # Changelog
+## 3.1.0
+- add new strategies for two-pass collectstatic where the first pass is file or memory based
 
 ## 3.0.1
 - Refactor boto3 strategy to wrap the storage classes to re-introduce preloading of metadata

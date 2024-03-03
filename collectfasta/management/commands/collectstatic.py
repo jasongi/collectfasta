@@ -62,13 +62,34 @@ class Command(collectstatic.Command):
             self.storage = self.strategy.wrap_storage(self.storage)
         super().set_options(**options)
 
+    def second_pass(self, stats: Dict[str, List[str]]) -> Dict[str, List[str]]:
+        second_pass_strategy = self.strategy.second_pass_strategy()
+        if self.collectfasta_enabled and second_pass_strategy:
+            self.copied_files = []
+            self.symlinked_files = []
+            self.unmodified_files = []
+            self.num_copied_files = 0
+            source_storage = self.storage
+            self.storage = second_pass_strategy.wrap_storage(self.storage)
+            self.strategy = second_pass_strategy
+            self.log(f"Running second pass with {self.strategy.__class__.__name__}...")
+            for f in source_storage.listdir("")[1]:
+                self.maybe_copy_file((f, f, source_storage))
+            return {
+                "modified": self.copied_files + self.symlinked_files,
+                "unmodified": self.unmodified_files,
+                "post_processed": self.post_processed_files,
+            }
+
+        return stats
+
     def collect(self) -> Dict[str, List[str]]:
         """
         Override collect to copy files concurrently. The tasks are populated by
         Command.copy_file() which is called by super().collect().
         """
         if not self.collectfasta_enabled or not settings.threads:
-            return super().collect()
+            return self.second_pass(super().collect())
 
         # Store original value of post_process in super_post_process and always
         # set the value to False to prevent the default behavior from
@@ -83,8 +104,7 @@ class Command(collectstatic.Command):
 
         self.maybe_post_process(super_post_process)
         return_value["post_processed"] = self.post_processed_files
-
-        return return_value
+        return self.second_pass(return_value)
 
     def handle(self, *args: Any, **options: Any) -> Optional[str]:
         """Override handle to suppress summary output."""
@@ -96,7 +116,7 @@ class Command(collectstatic.Command):
 
     def maybe_copy_file(self, args: Task) -> None:
         """Determine if file should be copied or not and handle exceptions."""
-        path, prefixed_path, source_storage = args
+        path, prefixed_path, source_storage = self.strategy.copy_args_hook(args)
 
         # Build up found_files to look identical to how it's created in the
         # builtin command's collect() method so that we can run post_process

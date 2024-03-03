@@ -73,6 +73,19 @@ class Strategy(abc.ABC, Generic[_RemoteStorage]):
         """Hook called when a file copy is skipped."""
         ...
 
+    def second_pass_strategy(self) -> "Optional[Strategy[_RemoteStorage]]":
+        """
+        Strategy that is used after the first pass of hashing is done - to copy the files
+        to the remote destination.
+        """
+        return None
+
+    def copy_args_hook(
+        self, args: Tuple[str, str, Storage]
+    ) -> Tuple[str, str, Storage]:
+        """Hook called before copying a file. Use this to modify the path or storage."""
+        return args
+
 
 class HashStrategy(Strategy[_RemoteStorage], abc.ABC):
     use_gzip = False

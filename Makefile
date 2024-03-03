@@ -8,6 +8,9 @@ test:
 test-docker: docker-up
 	pytest -svv; docker compose down
 
+test-docker-ff: docker-up
+	pytest -svv -x; docker compose down
+
 test-speed: docker-up
 	pytest -x --speedtest -m speed_test -svv; docker compose down
 

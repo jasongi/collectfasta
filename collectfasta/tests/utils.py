@@ -10,6 +10,7 @@ from typing import Callable
 from typing import Type
 from typing import TypeVar
 from typing import cast
+from unittest import TestCase
 
 import pytest
 from django.conf import settings as django_settings
@@ -34,10 +35,18 @@ static_dir: Final = pathlib.Path(django_settings.STATICFILES_DIRS[0])
 F = TypeVar("F", bound=Callable[..., Any])
 
 
+def assert_static_file_number(files: int, output: str, case: TestCase) -> None:
+    # if it's a manifest, there will be 2*N + 1 files copied
+    if "manifest" in case.id() and "2pass" in case.id():
+        case.assertIn(f"{files*2+1} static files copied.", output)
+    else:
+        case.assertIn(f"{files} static files copied.", output)
+
+
 def make_100_files():
     with ThreadPoolExecutor(max_workers=5) as executor:
-        for _ in range(100):
-            executor.submit(create_big_static_file)
+        for _ in range(50):
+            executor.submit(create_big_referenced_static_file)
         executor.shutdown(wait=True)
 
 
@@ -100,11 +109,27 @@ def many(**mutations: Callable[[F], F]) -> Callable[[F], Type[unittest.TestCase]
     return test
 
 
+def create_two_referenced_static_files() -> tuple[pathlib.Path, pathlib.Path]:
+    """Create a static file, then another file with a reference to the file"""
+    path = create_static_file()
+    reference_path = static_dir / f"{uuid.uuid4().hex}.txt"
+    reference_path.write_text(f"{{% static '{path.name}' %}}")
+    return (path, reference_path)
+
+
 def create_static_file() -> pathlib.Path:
     """Write random characters to a file in the static directory."""
     path = static_dir / f"{uuid.uuid4().hex}.txt"
     path.write_text("".join(chr(random.randint(0, 64)) for _ in range(500)))
     return path
+
+
+def create_big_referenced_static_file() -> tuple[pathlib.Path, pathlib.Path]:
+    """Create a big static file, then another file with a reference to the file"""
+    path = create_big_static_file()
+    reference_path = static_dir / f"{uuid.uuid4().hex}.txt"
+    reference_path.write_text(f"{{% static '{path.name}' %}}")
+    return (path, reference_path)
 
 
 def create_big_static_file() -> pathlib.Path:
@@ -115,6 +140,13 @@ def create_big_static_file() -> pathlib.Path:
 
 
 def clean_static_dir() -> None:
+    try:
+        for filename in os.listdir(django_settings.AWS_LOCATION):
+            file = pathlib.Path(django_settings.AWS_LOCATION) / filename
+            if file.is_file():
+                file.unlink()
+    except FileNotFoundError:
+        pass
     for filename in os.listdir(static_dir.as_posix()):
         file = static_dir / filename
         if file.is_file():
