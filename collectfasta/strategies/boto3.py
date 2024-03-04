@@ -1,13 +1,17 @@
-# type: ignore
 import logging
 import os
 import tempfile
 from typing import Any
+from typing import Dict
 from typing import Optional
+from typing import TypeVar
+from typing import Union
+from typing import cast
 
 import botocore.exceptions
 from boto3.s3.transfer import TransferConfig
 from django.contrib.staticfiles.storage import ManifestFilesMixin
+from django.core.files.storage import Storage
 from django.utils.timezone import make_naive
 from storages.backends.s3boto3 import S3Boto3Storage
 from storages.backends.s3boto3 import S3ManifestStaticStorage
@@ -27,11 +31,12 @@ from .hashing import WithoutPrefixMixin
 logger = logging.getLogger(__name__)
 
 
-class S3StorageWrapperMixin:
-    def __init__(self, original: S3Boto3Storage) -> None:
+class S3StorageWrapperBase(S3Boto3Storage):
+    def __init__(self, *args: Any, original: Any, **kwargs: Any) -> None:
         default_settings = original.get_default_settings()
         for name in default_settings.keys():
-            if not hasattr(self, name) and hasattr(original, name):
+            setattr(self, name, default_settings[name])
+            if hasattr(original, name):
                 setattr(self, name, getattr(original, name))
         for arg in [
             "_bucket",
@@ -49,32 +54,29 @@ class S3StorageWrapperMixin:
             self._transfer_config = TransferConfig(use_threads=self.use_threads)
 
         self.preload_metadata = True
-        self._entries = {}
+        self._entries: Dict[str, str] = {}
 
     # restores the "preload_metadata" method that was removed in django-storages 1.10
     def _save(self, name, content):
-        content.seek(0)
-        with tempfile.SpooledTemporaryFile() as tmp:
-            tmp.write(content.read())
-            cleaned_name = clean_name(name)
-            name = self._normalize_name(cleaned_name)
-            params = self._get_write_parameters(name, content)
+        cleaned_name = clean_name(name)
+        name = self._normalize_name(cleaned_name)
+        params = self._get_write_parameters(name, content)
 
-            if is_seekable(content):
-                content.seek(0, os.SEEK_SET)
-            if (
-                self.gzip
-                and params["ContentType"] in self.gzip_content_types
-                and "ContentEncoding" not in params
-            ):
-                content = self._compress_content(content)
-                params["ContentEncoding"] = "gzip"
+        if is_seekable(content):
+            content.seek(0, os.SEEK_SET)
+        if (
+            self.gzip
+            and params["ContentType"] in self.gzip_content_types
+            and "ContentEncoding" not in params
+        ):
+            content = self._compress_content(content)
+            params["ContentEncoding"] = "gzip"
 
-            obj = self.bucket.Object(name)
-            if self.preload_metadata:
-                self._entries[name] = obj
-            obj.upload_fileobj(content, ExtraArgs=params, Config=self._transfer_config)
-            return cleaned_name
+        obj = self.bucket.Object(name)
+        if self.preload_metadata:
+            self._entries[name] = obj
+        obj.upload_fileobj(content, ExtraArgs=params, Config=self._transfer_config)
+        return cleaned_name
 
     @property
     def entries(self):
@@ -121,11 +123,11 @@ class S3StorageWrapperMixin:
             return make_naive(entry.last_modified)
 
 
-class ManifestFilesWrapperMixin:
-    def __init__(self, original: ManifestFilesMixin) -> None:
-        super().__init__(original)
+class ManifestFilesWrapper(ManifestFilesMixin):
+    def __init__(self, *args: Any, original: Any, **kwargs: Any) -> None:
+        super().__init__(*args, original=original, **kwargs)
         if original.manifest_storage == original:
-            self.manifest_storage = self
+            self.manifest_storage = cast(Storage, self)
         else:
             self.manifest_storage = original.manifest_storage
         for arg in [
@@ -140,37 +142,51 @@ class ManifestFilesWrapperMixin:
                 setattr(self, arg, getattr(original, arg))
 
 
-class S3StorageWrapper(S3StorageWrapperMixin, S3Boto3Storage):
+class S3StorageWrapper(S3StorageWrapperBase, S3Boto3Storage):
     pass
 
 
-class S3StaticStorageWrapper(S3StorageWrapperMixin, S3StaticStorage):
+class S3StaticStorageWrapper(S3StorageWrapperBase, S3StaticStorage):
     pass
 
 
 class S3ManifestStaticStorageWrapper(
-    ManifestFilesWrapperMixin, S3StorageWrapperMixin, S3ManifestStaticStorage
+    ManifestFilesWrapper,
+    S3StorageWrapperBase,
+    S3ManifestStaticStorage,
 ):
-    pass
+    def _save(self, name, content):
+        content.seek(0)
+        with tempfile.SpooledTemporaryFile() as tmp:
+            tmp.write(content.read())
+            return super()._save(name, tmp)
 
 
-class Boto3Strategy(CachingHashStrategy[S3Boto3Storage]):
-    def __init__(self, remote_storage: S3Boto3Storage) -> None:
+S3Storage = TypeVar(
+    "S3Storage", bound=Union[S3Boto3Storage, S3StaticStorage, S3ManifestStaticStorage]
+)
+
+S3StorageWrapped = Union[
+    S3StaticStorageWrapper, S3ManifestStaticStorageWrapper, S3StorageWrapper
+]
+
+
+class Boto3Strategy(CachingHashStrategy[S3Storage]):
+    def __init__(self, remote_storage: S3Storage) -> None:
         self.remote_storage = self.wrapped_storage(remote_storage)
         super().__init__(self.remote_storage)
         self.use_gzip = settings.aws_is_gzipped
-        self._entries: Optional[dict[str, Any]] = None
 
-    def wrapped_storage(self, remote_storage: S3Boto3Storage) -> S3Boto3Storage:
+    def wrapped_storage(self, remote_storage: S3Storage) -> S3StorageWrapped:
         if isinstance(remote_storage, S3ManifestStaticStorage):
-            return S3ManifestStaticStorageWrapper(remote_storage)
+            return S3ManifestStaticStorageWrapper(original=remote_storage)
         elif isinstance(remote_storage, S3StaticStorage):
-            return S3StaticStorageWrapper(remote_storage)
+            return S3StaticStorageWrapper(original=remote_storage)
         elif isinstance(remote_storage, S3Boto3Storage):
-            return S3StorageWrapper(remote_storage)
+            return S3StorageWrapper(original=remote_storage)
         return remote_storage
 
-    def wrap_storage(self, remote_storage: S3Boto3Storage) -> S3Boto3Storage:
+    def wrap_storage(self, remote_storage: S3Storage) -> S3StorageWrapped:
         return self.remote_storage
 
     def _normalize_path(self, prefixed_path: str) -> str:

@@ -6,3 +6,6 @@ boto3
 google-cloud-storage
 pytest
 pytest-django
+django-stubs
+boto3-stubs[s3]
+types-s3transfer

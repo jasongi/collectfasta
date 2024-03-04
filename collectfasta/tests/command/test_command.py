@@ -1,6 +1,5 @@
 import timeit
 from typing import Callable
-from typing import ContextManager
 from typing import Iterator
 from unittest import TestCase
 from unittest import mock
@@ -27,7 +26,7 @@ from .utils import call_collectstatic
 
 def generate_storage_variations(
     storages: dict, strategies: dict
-) -> Iterator[tuple[str, ContextManager]]:
+) -> Iterator[tuple[str, override_settings]]:
     for storage_name, storage_settings in storages.items():
         for strategy_name, strategy_settings in strategies.items():
             yield (
@@ -102,9 +101,9 @@ all_backend_confs = {
     **filesystem_backend_confs,
 }
 
-make_test_aws_backends: Callable = many(**aws_backend_confs)  # type: ignore
-make_test_all_backends: Callable = many(**all_backend_confs)  # type: ignore
-make_test_cloud_backends: Callable = many(**aws_backend_confs, **gcloud_backend_confs)  # type: ignore
+make_test_aws_backends: Callable = many(**aws_backend_confs)
+make_test_all_backends: Callable = many(**all_backend_confs)
+make_test_cloud_backends: Callable = many(**aws_backend_confs, **gcloud_backend_confs)
 
 
 @make_test_all_backends
@@ -115,6 +114,16 @@ def test_basics(case: TestCase) -> None:
     assert_static_file_number(2, call_collectstatic(), case)
     # file state should now be cached
     case.assertIn("0 static files copied.", call_collectstatic())
+
+
+@make_test_all_backends
+@live_test
+def test_only_copies_new(case: TestCase) -> None:
+    clean_static_dir()
+    create_two_referenced_static_files()
+    assert_static_file_number(2, call_collectstatic(), case)
+    create_two_referenced_static_files()
+    assert_static_file_number(2, call_collectstatic(), case)
 
 
 @make_test_all_backends

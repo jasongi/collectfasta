@@ -1,5 +1,12 @@
+from typing import Any
+from typing import Callable
 from typing import Optional
+from typing import Protocol
+from typing import Tuple
 from typing import Type
+from typing import Union
+from typing import cast
+from typing import runtime_checkable
 
 from django.contrib.staticfiles.storage import ManifestFilesMixin
 from django.core.files.storage import FileSystemStorage
@@ -8,15 +15,30 @@ from django.core.files.storage.memory import InMemoryStorage
 
 from .base import HashStrategy
 from .base import Strategy
-from .base import _RemoteStorage
 
 
-class InMemoryManifestFilesStorage(ManifestFilesMixin, InMemoryStorage):  # type: ignore
-    pass
+@runtime_checkable
+class LocationConstructorProtocol(Protocol):
+
+    def __init__(self, location: Optional[str]) -> None: ...
 
 
-class FileSystemManifestFilesStorage(ManifestFilesMixin, FileSystemStorage):  # type: ignore
-    pass
+@runtime_checkable
+class HasLocationProtocol(Protocol):
+    location: str
+
+
+class InMemoryManifestFilesStorage(ManifestFilesMixin, InMemoryStorage):
+    url: Callable[..., Any]
+
+
+class FileSystemManifestFilesStorage(ManifestFilesMixin, FileSystemStorage):
+    url: Callable[..., Any]
+
+
+OriginalStorage = Union[
+    LocationConstructorProtocol, HasLocationProtocol, Storage, ManifestFilesMixin
+]
 
 
 class HashingTwoPassStrategy(HashStrategy[Storage]):
@@ -26,23 +48,28 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
     the files to the remote storage
     """
 
-    first_manifest_storage: Optional[Type[ManifestFilesMixin]] = None
-    second_strategy: Optional[Type[Strategy]] = None
+    first_manifest_storage: Type[OriginalStorage]
+    second_strategy: Type[Strategy[Storage]]
+    original_storage: OriginalStorage
+    memory_storage: OriginalStorage
 
-    def __init__(self, remote_storage: _RemoteStorage) -> None:
+    def __init__(self, remote_storage: OriginalStorage) -> None:
+        assert issubclass(self.first_manifest_storage, ManifestFilesMixin)
+        assert isinstance(remote_storage, ManifestFilesMixin)
         self.first_pass = True
         self.original_storage = remote_storage
         self.memory_storage = self._get_tmp_storage()
+        assert isinstance(self.memory_storage, Storage)
         self.remote_storage = self.memory_storage
         super().__init__(self.memory_storage)
 
-    def _get_tmp_storage(self) -> Storage:
-        if isinstance(self.original_storage, ManifestFilesMixin):
-            return self.first_manifest_storage(location=self.original_storage.location)  # type: ignore
-        else:
-            raise ValueError(
-                "HashingMemoryStrategy can only be used with subclasses of ManifestFilesMixin"
-            )
+    def _get_tmp_storage(self) -> OriginalStorage:
+        assert isinstance(self.original_storage, HasLocationProtocol)
+        assert issubclass(self.first_manifest_storage, LocationConstructorProtocol)
+        return cast(
+            OriginalStorage,
+            self.first_manifest_storage(location=self.original_storage.location),
+        )
 
     def wrap_storage(self, remote_storage: Storage) -> Storage:
         return self.remote_storage
@@ -63,14 +90,24 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
                 "second_strategy must be set to a valid strategy class"
             )
         else:
+            assert isinstance(self.original_storage, Storage)
             return self.second_strategy(self.original_storage)
 
 
-class WithoutPrefixMixin:
-    def copy_args_hook(self, args):
+Task = Tuple[str, str, Storage]
+
+
+class StrategyWithLocationProtocol:
+    remote_storage: Any
+
+
+class WithoutPrefixMixin(StrategyWithLocationProtocol):
+
+    def copy_args_hook(self, args: Task) -> Task:
+        assert isinstance(self.remote_storage, HasLocationProtocol)
         return (
-            args[0].replace(self.remote_storage.location, ""),  # type: ignore
-            args[1].replace(self.remote_storage.location, ""),  # type: ignore
+            args[0].replace(self.remote_storage.location, ""),
+            args[1].replace(self.remote_storage.location, ""),
             args[2],
         )
 

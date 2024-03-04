@@ -1,4 +1,7 @@
 # Changelog
+## 3.1.1
+- removed type ignores, updated tests
+
 ## 3.1.0
 - add new strategies for two-pass collectstatic where the first pass is file or memory based
 

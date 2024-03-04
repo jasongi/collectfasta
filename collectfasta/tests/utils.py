@@ -112,14 +112,14 @@ def many(**mutations: Callable[[F], F]) -> Callable[[F], Type[unittest.TestCase]
 def create_two_referenced_static_files() -> tuple[pathlib.Path, pathlib.Path]:
     """Create a static file, then another file with a reference to the file"""
     path = create_static_file()
-    reference_path = static_dir / f"{uuid.uuid4().hex}.txt"
+    reference_path = static_dir / f"{uuid.uuid4().hex}.html"
     reference_path.write_text(f"{{% static '{path.name}' %}}")
     return (path, reference_path)
 
 
 def create_static_file() -> pathlib.Path:
     """Write random characters to a file in the static directory."""
-    path = static_dir / f"{uuid.uuid4().hex}.txt"
+    path = static_dir / f"{uuid.uuid4().hex}.html"
     path.write_text("".join(chr(random.randint(0, 64)) for _ in range(500)))
     return path
 
@@ -127,14 +127,14 @@ def create_static_file() -> pathlib.Path:
 def create_big_referenced_static_file() -> tuple[pathlib.Path, pathlib.Path]:
     """Create a big static file, then another file with a reference to the file"""
     path = create_big_static_file()
-    reference_path = static_dir / f"{uuid.uuid4().hex}.txt"
+    reference_path = static_dir / f"{uuid.uuid4().hex}.html"
     reference_path.write_text(f"{{% static '{path.name}' %}}")
     return (path, reference_path)
 
 
 def create_big_static_file() -> pathlib.Path:
     """Write random characters to a file in the static directory."""
-    path = static_dir / f"{uuid.uuid4().hex}.txt"
+    path = static_dir / f"{uuid.uuid4().hex}.html"
     path.write_text("".join(chr(random.randint(0, 64)) for _ in range(100000)))
     return path
 

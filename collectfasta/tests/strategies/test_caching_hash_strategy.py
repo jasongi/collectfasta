@@ -35,27 +35,26 @@ def test_get_cache_key(case: TestCase) -> None:
 def test_gets_and_invalidates_hash(case: TestCase) -> None:
     strategy = Strategy()
     expected_hash = "hash"
-    mocked = mock.MagicMock(return_value=expected_hash)
-    # ignore due to monkey patching
-    strategy.get_remote_file_hash = mocked  # type: ignore
+    with mock.patch.object(
+        strategy, "get_remote_file_hash", new=mock.MagicMock(return_value=expected_hash)
+    ) as mocked:
+        # empty cache
+        result_hash = strategy.get_cached_remote_file_hash("path", "prefixed_path")
+        case.assertEqual(result_hash, expected_hash)
+        mocked.assert_called_once_with("prefixed_path")
 
-    # empty cache
-    result_hash = strategy.get_cached_remote_file_hash("path", "prefixed_path")
-    case.assertEqual(result_hash, expected_hash)
-    mocked.assert_called_once_with("prefixed_path")
+        # populated cache
+        mocked.reset_mock()
+        result_hash = strategy.get_cached_remote_file_hash("path", "prefixed_path")
+        case.assertEqual(result_hash, expected_hash)
+        mocked.assert_not_called()
 
-    # populated cache
-    mocked.reset_mock()
-    result_hash = strategy.get_cached_remote_file_hash("path", "prefixed_path")
-    case.assertEqual(result_hash, expected_hash)
-    mocked.assert_not_called()
-
-    # test destroy_etag
-    mocked.reset_mock()
-    strategy.invalidate_cached_hash("path")
-    result_hash = strategy.get_cached_remote_file_hash("path", "prefixed_path")
-    case.assertEqual(result_hash, expected_hash)
-    mocked.assert_called_once_with("prefixed_path")
+        # test destroy_etag
+        mocked.reset_mock()
+        strategy.invalidate_cached_hash("path")
+        result_hash = strategy.get_cached_remote_file_hash("path", "prefixed_path")
+        case.assertEqual(result_hash, expected_hash)
+        mocked.assert_called_once_with("prefixed_path")
 
 
 @make_test
