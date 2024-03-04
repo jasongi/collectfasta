@@ -8,11 +8,13 @@ A faster collectstatic command. This is a fork of the archived collectfast by @a
 **Features**
 
 - Efficiently decide what files to upload using cached checksums
+- Two-pass uploads for Manifest storage which can be slow using a single pass - files are hashed/post-processed in Memory/Local filesystem and then the result is copied.
 - Parallel file uploads
 
 **Supported Storage Backends**
-
 - `storages.backends.s3boto3.S3Boto3Storage`
+- `storages.backends.s3boto3.S3StaticStorage`
+- `storages.backends.s3boto3.S3ManifestStaticStorage`
 - `storages.backends.gcloud.GoogleCloudStorage`
 - `django.core.files.storage.FileSystemStorage`
 
@@ -57,6 +59,9 @@ INSTALLED_APPS = (
 Collectfasta Strategy|Storage Backend
 ---|---
 collectfasta.strategies.boto3.Boto3Strategy|storages.backends.s3.S3Storage
+collectfasta.strategies.boto3.Boto3Strategy|storages.backends.s3.S3StaticStorage
+collectfasta.strategies.boto3.Boto3ManifestMemoryStrategy (recommended)|storages.backends.s3.S3ManifestStaticStorage
+collectfasta.strategies.boto3.Boto3ManifestFileSystemStrategy|storages.backends.s3.S3ManifestStaticStorage
 collectfasta.strategies.gcloud.GoogleCloudStrategy|storages.backends.gcloud.GoogleCloudStorage
 collectfasta.strategies.filesystem.FileSystemStrategy|django.core.files.storage.FileSystemStorage
 
