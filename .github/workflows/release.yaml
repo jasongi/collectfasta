@@ -4,10 +4,10 @@ on:
     types: [released]
 jobs:
   call-lint:
-    uses: jasongi/collectfasta/.github/workflows/lint.yml@main
+    uses: jasongi/collectfasta/.github/workflows/lint.yaml@master
     secrets: inherit
   call-test-suite:
-    uses: jasongi/collectfasta/.github/workflows/test-suite.yml@main
+    uses: jasongi/collectfasta/.github/workflows/test-suite.yaml@master
     secrets: inherit
   build:
     runs-on: ubuntu-latest
