@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from typing import Dict
+from typing import Generator
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -19,6 +20,22 @@ from collectfasta.strategies import Strategy
 from collectfasta.strategies import load_strategy
 
 Task = Tuple[str, str, Storage]
+
+
+def collect_from_folder(
+    storage: Storage, path: str = ""
+) -> Generator[tuple[str, str], str, None]:
+    folders, files = storage.listdir(path)
+    for thefile in files:
+        if path:
+            prefixed = f"{path}/{thefile}"
+        else:
+            prefixed = thefile
+        yield prefixed, prefixed
+    for folder in folders:
+        if path:
+            folder = f"{path}/{folder}"
+        yield from collect_from_folder(storage, folder)
 
 
 class Command(collectstatic.Command):
@@ -73,8 +90,8 @@ class Command(collectstatic.Command):
             self.storage = second_pass_strategy.wrap_storage(self.storage)
             self.strategy = second_pass_strategy
             self.log(f"Running second pass with {self.strategy.__class__.__name__}...")
-            for f in source_storage.listdir("")[1]:
-                self.maybe_copy_file((f, f, source_storage))
+            for f, prefixed in collect_from_folder(source_storage):
+                self.maybe_copy_file((f, prefixed, source_storage))
             return {
                 "modified": self.copied_files + self.symlinked_files,
                 "unmodified": self.unmodified_files,
@@ -117,7 +134,6 @@ class Command(collectstatic.Command):
     def maybe_copy_file(self, args: Task) -> None:
         """Determine if file should be copied or not and handle exceptions."""
         path, prefixed_path, source_storage = self.strategy.copy_args_hook(args)
-
         # Build up found_files to look identical to how it's created in the
         # builtin command's collect() method so that we can run post_process
         # after all parallel uploads finish.

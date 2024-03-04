@@ -217,7 +217,12 @@ def test_calls_post_copy_hook(_case: TestCase, post_copy_hook: mock.MagicMock) -
     post_copy_hook.assert_has_calls(
         [
             mock.call(mock.ANY, path_one.name, path_one.name, mock.ANY),
-            mock.call(mock.ANY, path_two.name, path_two.name, mock.ANY),
+            mock.call(
+                mock.ANY,
+                f"{path_one.name.replace('.html','')}_folder/{path_two.name}",
+                f"{path_one.name.replace('.html','')}_folder/{path_two.name}",
+                mock.ANY,
+            ),
         ],
         any_order=True,
     )
@@ -226,7 +231,7 @@ def test_calls_post_copy_hook(_case: TestCase, post_copy_hook: mock.MagicMock) -
 @make_test_all_backends
 @live_test
 @mock.patch("collectfasta.strategies.base.Strategy.on_skip_hook", autospec=True)
-def test_calls_on_skip_hook(_case: TestCase, on_skip_hook: mock.MagicMock) -> None:
+def test_calls_on_skip_hook(case: TestCase, on_skip_hook: mock.MagicMock) -> None:
     clean_static_dir()
     (path_one, path_two) = create_two_referenced_static_files()
     cmd = Command()
@@ -237,7 +242,12 @@ def test_calls_on_skip_hook(_case: TestCase, on_skip_hook: mock.MagicMock) -> No
     on_skip_hook.assert_has_calls(
         [
             mock.call(mock.ANY, path_one.name, path_one.name, mock.ANY),
-            mock.call(mock.ANY, path_two.name, path_two.name, mock.ANY),
+            mock.call(
+                mock.ANY,
+                f"{path_one.name.replace('.html','')}_folder/{path_two.name}",
+                f"{path_one.name.replace('.html','')}_folder/{path_two.name}",
+                mock.ANY,
+            ),
         ],
         any_order=True,
     )

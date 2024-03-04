@@ -1,4 +1,7 @@
 # Changelog
+## 3.1.3
+- fixed 2-pass to copy subdirectories
+
 ## 3.1.2
 - fix types to work with python 3.12
 

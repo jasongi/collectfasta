@@ -112,8 +112,10 @@ def many(**mutations: Callable[[F], F]) -> Callable[[F], Type[unittest.TestCase]
 def create_two_referenced_static_files() -> tuple[pathlib.Path, pathlib.Path]:
     """Create a static file, then another file with a reference to the file"""
     path = create_static_file()
-    reference_path = static_dir / f"{uuid.uuid4().hex}.html"
-    reference_path.write_text(f"{{% static '{path.name}' %}}")
+    folder_path = static_dir / (path.stem + "_folder")
+    folder_path.mkdir()
+    reference_path = folder_path / f"{uuid.uuid4().hex}.html"
+    reference_path.write_text(f"{{% static '../{path.name}' %}}")
     return (path, reference_path)
 
 
@@ -140,17 +142,27 @@ def create_big_static_file() -> pathlib.Path:
 
 
 def clean_static_dir() -> None:
+    clean_static_dir_recurse(static_dir.as_posix())
+    clean_static_dir_recurse(django_settings.AWS_LOCATION)
+
+
+def clean_static_dir_recurse(location: str) -> None:
     try:
-        for filename in os.listdir(django_settings.AWS_LOCATION):
-            file = pathlib.Path(django_settings.AWS_LOCATION) / filename
-            if file.is_file():
-                file.unlink()
+        for filename in os.listdir(location):
+            file = pathlib.Path(location) / filename
+            # don't accidentally wipe the whole drive if someone puts / as location.
+            if (
+                "collectfasta" in str(file.absolute())
+                and ".." not in str(file.as_posix())
+                and len(list(filter(lambda x: x == "/", str(file.absolute())))) > 2
+            ):
+                if file.is_file():
+                    file.unlink()
+                elif file.is_dir():
+                    clean_static_dir_recurse(file.as_posix())
+                    file.rmdir()
     except FileNotFoundError:
         pass
-    for filename in os.listdir(static_dir.as_posix()):
-        file = static_dir / filename
-        if file.is_file():
-            file.unlink()
 
 
 def override_setting(name: str, value: Any) -> Callable[[F], F]:
