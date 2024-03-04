@@ -3,6 +3,12 @@ on:
   release:
     types: [released]
 jobs:
+  call-lint:
+    uses: jasongi/collectfasta/.github/workflows/lint.yml@main
+    secrets: inherit
+  call-test-suite:
+    uses: jasongi/collectfasta/.github/workflows/test-suite.yml@main
+    secrets: inherit
   build:
     runs-on: ubuntu-latest
     steps:
@@ -21,6 +27,8 @@ jobs:
       Publish Python 🐍 distribution 📦 to PyPI
     needs:
     - build
+    - call-lint
+    - call-test-suite
     runs-on: ubuntu-latest
     environment:
       name: pypi

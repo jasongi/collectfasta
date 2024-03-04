@@ -1,5 +1,6 @@
 name: Static analysis
 on:
+  workflow_call:
   push:
     branches:
       - master

@@ -1,5 +1,16 @@
 name: Test Suite
 on:
+  workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        description: 'AWS Access Key ID'
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        description: 'AWS Secret Access Key'
+        required: true
+      GCLOUD_API_CREDENTIALS_BASE64:
+        description: 'Base64 encoded GCloud API credentials'
+        required: true
   push:
     branches:
       - master
