@@ -64,11 +64,16 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
         super().__init__(self.memory_storage)
 
     def _get_tmp_storage(self) -> OriginalStorage:
-        assert isinstance(self.original_storage, HasLocationProtocol)
+        location = ""
+        if hasattr(self.original_storage, "location"):
+            assert isinstance(self.original_storage, HasLocationProtocol)
+            location = self.original_storage.location
+        else:
+            raise ValueError("Original storage must have a location")
         assert issubclass(self.first_manifest_storage, LocationConstructorProtocol)
         return cast(
             OriginalStorage,
-            self.first_manifest_storage(location=self.original_storage.location),
+            self.first_manifest_storage(location=location),
         )
 
     def wrap_storage(self, remote_storage: Storage) -> Storage:
