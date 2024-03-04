@@ -12,6 +12,7 @@ from django.contrib.staticfiles.storage import ManifestFilesMixin
 from django.core.files.storage import FileSystemStorage
 from django.core.files.storage import Storage
 from django.core.files.storage.memory import InMemoryStorage
+from django.utils.functional import LazyObject
 
 from .base import HashStrategy
 from .base import Strategy
@@ -37,7 +38,11 @@ class FileSystemManifestFilesStorage(ManifestFilesMixin, FileSystemStorage):
 
 
 OriginalStorage = Union[
-    LocationConstructorProtocol, HasLocationProtocol, Storage, ManifestFilesMixin
+    LocationConstructorProtocol,
+    HasLocationProtocol,
+    Storage,
+    ManifestFilesMixin,
+    LazyObject,
 ]
 
 
@@ -64,12 +69,9 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
         super().__init__(self.memory_storage)
 
     def _get_tmp_storage(self) -> OriginalStorage:
-        location = ""
-        if hasattr(self.original_storage, "location"):
-            assert isinstance(self.original_storage, HasLocationProtocol)
-            location = self.original_storage.location
-        else:
-            raise ValueError("Original storage must have a location")
+        # python 3.12 freezes types at runtime, which does not play nicely with
+        # LazyObject so we need to cast the type here
+        location = cast(HasLocationProtocol, self.original_storage).location
         assert issubclass(self.first_manifest_storage, LocationConstructorProtocol)
         return cast(
             OriginalStorage,

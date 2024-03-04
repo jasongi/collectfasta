@@ -1,4 +1,7 @@
 # Changelog
+## 3.1.2
+- fix types to work with python 3.12
+
 ## 3.1.1
 - removed type ignores, updated tests
 
