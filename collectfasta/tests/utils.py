@@ -2,17 +2,13 @@ import functools
 import os
 import pathlib
 import random
-import unittest
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from typing import Callable
-from typing import Type
 from typing import TypeVar
 from typing import cast
-from unittest import TestCase
 
-import pytest
 from django.conf import settings as django_settings
 from django.utils.module_loading import import_string
 from storages.backends.gcloud import GoogleCloudStorage
@@ -20,27 +16,9 @@ from typing_extensions import Final
 
 from collectfasta import settings
 
-live_test = pytest.mark.live_test
-
-speed_test_mark = pytest.mark.speed_test
-speed_test_option = pytest.mark.skipif("not config.getoption('speedtest')")
-
-
-def speed_test(func):
-    return speed_test_mark(speed_test_option(func))
-
-
 static_dir: Final = pathlib.Path(django_settings.STATICFILES_DIRS[0])
 
 F = TypeVar("F", bound=Callable[..., Any])
-
-
-def assert_static_file_number(files: int, output: str, case: TestCase) -> None:
-    # if it's a manifest, there will be 2*N + 1 files copied
-    if "manifest" in case.id() and "2pass" in case.id():
-        case.assertIn(f"{files*2+1} static files copied.", output)
-    else:
-        case.assertIn(f"{files} static files copied.", output)
 
 
 def make_100_files():
@@ -69,44 +47,6 @@ class GoogleCloudStorageTest(GoogleCloudStorage):
         if django_settings.GS_CUSTOM_ENDPOINT:
             # Use the fake client if we are using the fake endpoint
             self._client = get_fake_client()
-
-
-def make_test(func: F) -> Type[unittest.TestCase]:
-    """
-    Creates a class that inherits from `unittest.TestCase` with the decorated
-    function as a method. Create tests like this:
-
-    >>> fn = lambda x: 1337
-    >>> @make_test
-    ... def test_fn(case):
-    ...     case.assertEqual(fn(), 1337)
-    """
-    case = type(func.__name__, (unittest.TestCase,), {func.__name__: func})
-    case.__module__ = func.__module__
-    return case
-
-
-def many(**mutations: Callable[[F], F]) -> Callable[[F], Type[unittest.TestCase]]:
-    def test(func: F) -> Type[unittest.TestCase]:
-        """
-        Creates a class that inherits from `unittest.TestCase` with the decorated
-        function as a method. Create tests like this:
-
-        >>> fn = lambda x: 1337
-        >>> @make_test
-        ... def test_fn(case):
-        ...     case.assertEqual(fn(), 1337)
-        """
-        case_dict = {
-            "test_%s" % mutation_name: mutation(func)
-            for mutation_name, mutation in mutations.items()
-        }
-
-        case = type(func.__name__, (unittest.TestCase,), case_dict)
-        case.__module__ = func.__module__
-        return case
-
-    return test
 
 
 def create_two_referenced_static_files() -> tuple[pathlib.Path, pathlib.Path]:

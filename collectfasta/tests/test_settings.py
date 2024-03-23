@@ -56,6 +56,7 @@ def test_settings_with_threads():
         {"AWS_IS_GZIPPED": "yes"},
         {"GZIP_CONTENT_TYPES": "not tuple"},
     ),
+    ids=lambda x: list(x.keys())[0],
 )
 def test_invalid_setting_type_raises_value_error(django_settings):
     with override_settings(**django_settings):

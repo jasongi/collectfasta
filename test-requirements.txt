@@ -5,6 +5,7 @@ django-storages
 boto3
 google-cloud-storage
 pytest
+pytest-mock
 pytest-django
 django-stubs
 boto3-stubs[s3]

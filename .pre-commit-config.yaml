@@ -56,6 +56,7 @@ repos:
         args: []
         additional_dependencies:
           - pytest
+          - pytest-mock
           - pytest-django
           - typing-extensions
           - django-stubs>=1.4.0
