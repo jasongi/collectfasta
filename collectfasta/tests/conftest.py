@@ -1,15 +1,10 @@
 import os
 import shutil
-from typing import Any
-from typing import Generator
-from typing import Optional
 
 import pytest
 from django.conf import settings
 from django.test import override_settings as override_django_settings
-from pytest import Collector
-from pytest import CollectReport
-from pytest import hookimpl
+from pytest_uncollect_if import uncollect_if
 
 
 def composed(*decs):
@@ -71,29 +66,6 @@ COMPATIBLE_STRATEGIES_FOR_BACKENDS = {
     GOOGLE_CLOUD_STORAGE_BACKEND: [GOOGLE_CLOUD_STRATEGY],
     FILE_SYSTEM_STORAGE_BACKEND: [FILE_SYSTEM_STRATEGY, CACHING_FILE_SYSTEM_STRATEGY],
 }
-
-
-@hookimpl(hookwrapper=True)
-def pytest_make_collect_report(
-    collector: Collector,
-) -> Generator[Optional[CollectReport], Any, None]:
-    outcome = yield None
-    report: Optional[CollectReport] = outcome.get_result()
-    if report:
-        kept = []
-        for item in report.result:
-            m = item.get_closest_marker("uncollect_if")
-            if m:
-                func = m.kwargs["func"]
-                if not (hasattr(item, "callspec") and hasattr(item.callspec, "params")):
-                    raise ValueError(
-                        "uncollect_if can only be run on parametrized tests"
-                    )
-                if func(**item.callspec.params):
-                    continue
-            kept.append(item)
-        report.result = kept
-        outcome.force_result(report)
 
 
 def two_n_plus_1(files):
@@ -181,8 +153,8 @@ speed_test = composed(
     ),
 )
 
-aws_backends_only = pytest.mark.uncollect_if(func=uncollect_if_not_s3)
-cloud_backends_only = pytest.mark.uncollect_if(func=uncollect_if_not_cloud)
+aws_backends_only = uncollect_if(func=uncollect_if_not_s3)
+cloud_backends_only = uncollect_if(func=uncollect_if_not_cloud)
 
 
 def uncollect_if_not_two_pass(strategy: tuple[str, str], **kwargs: dict) -> bool:
@@ -197,8 +169,8 @@ def uncollect_if_two_pass(strategy: tuple[str, str], **kwargs: dict) -> bool:
     return not uncollect_if_not_two_pass(strategy, **kwargs)
 
 
-two_pass_only = pytest.mark.uncollect_if(func=uncollect_if_not_two_pass)
-exclude_two_pass = pytest.mark.uncollect_if(func=uncollect_if_two_pass)
+two_pass_only = uncollect_if(func=uncollect_if_not_two_pass)
+exclude_two_pass = uncollect_if(func=uncollect_if_two_pass)
 
 
 @pytest.fixture(autouse=True)
