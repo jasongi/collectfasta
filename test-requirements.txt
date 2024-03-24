@@ -10,3 +10,4 @@ pytest-django
 django-stubs
 boto3-stubs[s3]
 types-s3transfer
+pytest-uncollect-if>=0.1.1

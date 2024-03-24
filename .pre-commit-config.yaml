@@ -64,6 +64,7 @@ repos:
           - boto3
           - google-cloud-storage
           - boto3-stubs[s3]
+          - pytest_uncollect_if
 
   - repo: https://github.com/mgedmin/check-manifest
     rev: "0.49"
