@@ -12,6 +12,7 @@ from typing import cast
 from django.conf import settings as django_settings
 from django.utils.module_loading import import_string
 from storages.backends.gcloud import GoogleCloudStorage
+from storages.backends.s3boto3 import S3ManifestStaticStorage
 from typing_extensions import Final
 
 from collectfasta import settings
@@ -49,6 +50,11 @@ class GoogleCloudStorageTest(GoogleCloudStorage):
             self._client = get_fake_client()
 
 
+class S3ManifestCustomStaticStorage(S3ManifestStaticStorage):
+    location = "prefix"
+    manifest_name = "prefixfiles.json"
+
+
 def create_two_referenced_static_files() -> tuple[pathlib.Path, pathlib.Path]:
     """Create a static file, then another file with a reference to the file"""
     path = create_static_file()
@@ -84,6 +90,7 @@ def create_big_static_file() -> pathlib.Path:
 def clean_static_dir() -> None:
     clean_static_dir_recurse(static_dir.as_posix())
     clean_static_dir_recurse(django_settings.AWS_LOCATION)
+    clean_static_dir_recurse(S3ManifestCustomStaticStorage.location)
 
 
 def clean_static_dir_recurse(location: str) -> None:

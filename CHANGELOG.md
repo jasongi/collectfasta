@@ -1,4 +1,8 @@
 # Changelog
+## 3.2.0
+- Add support for custom S3ManifestStaticStorage subclasses with location set.
+- Fix edge case where location is in the filename
+
 ## 3.1.3
 - fixed 2-pass to copy subdirectories
 
