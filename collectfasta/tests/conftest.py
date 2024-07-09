@@ -19,6 +19,10 @@ def composed(*decs):
 S3_STORAGE_BACKEND = "storages.backends.s3.S3Storage"
 S3_STATIC_STORAGE_BACKEND = "storages.backends.s3.S3StaticStorage"
 S3_MANIFEST_STATIC_STORAGE_BACKEND = "storages.backends.s3.S3ManifestStaticStorage"
+S3_CUSTOM_MANIFEST_STATIC_STORAGE_BACKEND = (
+    "collectfasta.tests.utils.S3ManifestCustomStaticStorage"
+)
+
 GOOGLE_CLOUD_STORAGE_BACKEND = "collectfasta.tests.utils.GoogleCloudStorageTest"
 FILE_SYSTEM_STORAGE_BACKEND = "django.core.files.storage.FileSystemStorage"
 
@@ -39,6 +43,7 @@ S3_BACKENDS = [
     S3_STORAGE_BACKEND,
     S3_STATIC_STORAGE_BACKEND,
     S3_MANIFEST_STATIC_STORAGE_BACKEND,
+    S3_CUSTOM_MANIFEST_STATIC_STORAGE_BACKEND,
 ]
 BACKENDS = [
     *S3_BACKENDS,
@@ -59,6 +64,11 @@ COMPATIBLE_STRATEGIES_FOR_BACKENDS = {
     S3_STORAGE_BACKEND: [BOTO3_STRATEGY],
     S3_STATIC_STORAGE_BACKEND: [BOTO3_STRATEGY],
     S3_MANIFEST_STATIC_STORAGE_BACKEND: [
+        BOTO3_STRATEGY,
+        BOTO3_MANIFEST_MEMORY_STRATEGY,
+        BOTO3_MANIFEST_FILE_SYSTEM_STRATEGY,
+    ],
+    S3_CUSTOM_MANIFEST_STATIC_STORAGE_BACKEND: [
         BOTO3_STRATEGY,
         BOTO3_MANIFEST_MEMORY_STRATEGY,
         BOTO3_MANIFEST_FILE_SYSTEM_STRATEGY,
@@ -90,13 +100,6 @@ def params_for_backends():
             )
 
 
-S3_BACKENDS = [
-    S3_STORAGE_BACKEND,
-    S3_STATIC_STORAGE_BACKEND,
-    S3_MANIFEST_STATIC_STORAGE_BACKEND,
-]
-
-
 class StrategyFixture:
     def __init__(self, expected_copied_files, backend, strategy, two_pass):
         self.backend = backend
@@ -111,7 +114,10 @@ def strategy(request):
     if strategy in (
         BOTO3_MANIFEST_MEMORY_STRATEGY,
         BOTO3_MANIFEST_FILE_SYSTEM_STRATEGY,
-    ) and backend in (S3_MANIFEST_STATIC_STORAGE_BACKEND):
+    ) and backend in (
+        S3_MANIFEST_STATIC_STORAGE_BACKEND,
+        S3_CUSTOM_MANIFEST_STATIC_STORAGE_BACKEND,
+    ):
         expected_copied_files = two_n_plus_1
     else:
         expected_copied_files = n

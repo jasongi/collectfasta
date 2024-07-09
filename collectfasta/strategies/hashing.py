@@ -112,9 +112,15 @@ class WithoutPrefixMixin(StrategyWithLocationProtocol):
 
     def copy_args_hook(self, args: Task) -> Task:
         assert isinstance(self.remote_storage, HasLocationProtocol)
+        if self.remote_storage.location == "" or self.remote_storage.location.endswith(
+            "/"
+        ):
+            location = self.remote_storage.location
+        else:
+            location = f"{self.remote_storage.location}/"
         return (
-            args[0].replace(self.remote_storage.location, ""),
-            args[1].replace(self.remote_storage.location, ""),
+            args[0].replace(location, ""),
+            args[1].replace(location, ""),
             args[2],
         )
 
