@@ -1,4 +1,8 @@
 # Changelog
+## 3.2.1
+- change minimum django-storages version
+- support for Django 5.1 and python 3.13
+
 ## 3.2.0
 - Add support for custom S3ManifestStaticStorage subclasses with location set.
 - Fix edge case where location is in the filename
