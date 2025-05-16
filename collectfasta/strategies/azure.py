@@ -1,6 +1,8 @@
 import binascii
 import hashlib
 from functools import lru_cache
+from pathlib import Path
+
 from azure.core.exceptions import ResourceNotFoundError
 from django.core.files.storage import Storage
 from storages.backends.azure_storage import AzureStorage
@@ -16,7 +18,7 @@ class AzureBlobStrategy(CachingHashStrategy[AzureStorage]):
 
         blob_client = self.remote_storage.service_client.get_blob_client(
             container=self.remote_storage.azure_container,
-            blob=normalized_path
+            blob=normalized_path,
         )
 
         try:
@@ -24,7 +26,9 @@ class AzureBlobStrategy(CachingHashStrategy[AzureStorage]):
 
             # If content_md5 is available (<4MiB), use it
             if properties.content_settings.content_md5:
-                return binascii.hexlify(properties.content_settings.content_md5).decode()
+                return binascii.hexlify(
+                    properties.content_settings.content_md5
+                ).decode()
 
             # For larger files, create a hash from size and path
             size = properties.size
@@ -40,7 +44,7 @@ class AzureBlobStrategy(CachingHashStrategy[AzureStorage]):
 
     @lru_cache(maxsize=None)
     def get_local_file_hash(self, path: str, local_storage: Storage) -> str:
-        stat = (local_storage.base_location / path).stat()
+        stat = (Path(local_storage.base_location) / path).stat()
         file_size = stat.st_size
 
         # For smaller files (<4MiB), use MD5 of content

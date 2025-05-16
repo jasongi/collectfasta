@@ -11,6 +11,7 @@ from typing import cast
 
 from django.conf import settings as django_settings
 from django.utils.module_loading import import_string
+from storages.backends.azure_storage import AzureStorage
 from storages.backends.gcloud import GoogleCloudStorage
 from storages.backends.s3boto3 import S3ManifestStaticStorage
 from typing_extensions import Final
@@ -50,6 +51,28 @@ class GoogleCloudStorageTest(GoogleCloudStorage):
             self._client = get_fake_client()
 
 
+class AzureBlobStorageTest(AzureStorage):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.create_container()
+
+    def create_container(self):
+        from azure.core.exceptions import ResourceExistsError
+        from azure.storage.blob import BlobServiceClient
+
+        connection_string = django_settings.AZURE_CONNECTION_STRING
+        continer_name = django_settings.AZURE_CONTAINER
+
+        client = BlobServiceClient.from_connection_string(connection_string)
+
+        try:
+            client.create_container(continer_name)
+        except ResourceExistsError:
+            # recreate orphaned containers
+            client.delete_container(continer_name)
+            client.create_container(continer_name)
+
+
 class S3ManifestCustomStaticStorage(S3ManifestStaticStorage):
     location = "prefix"
     manifest_name = "prefixfiles.json"
@@ -84,6 +107,24 @@ def create_big_static_file() -> pathlib.Path:
     """Write random characters to a file in the static directory."""
     path = static_dir / f"{uuid.uuid4().hex}.html"
     path.write_text("".join(chr(random.randint(0, 64)) for _ in range(100000)))
+    return path
+
+
+def create_larger_than_4mb_referenced_static_file() -> tuple[
+    pathlib.Path, pathlib.Path
+]:
+    """Create a larger than 4mb static file, then another file with a reference to the file"""
+    path = create_larger_than_4mb_file()
+    reference_path = static_dir / f"{uuid.uuid4().hex}.html"
+    reference_path.write_text(f"{{% static '{path.name}' %}}")
+    return (path, reference_path)
+
+
+def create_larger_than_4mb_file() -> pathlib.Path:
+    """Write random characters to a file larger than 4mb in the static directory."""
+    size_bytes = 4 * 1024 * 1024 + 1  # 4MB + 1 byte
+    path = static_dir / f"{uuid.uuid4().hex}.html"
+    path.write_text("".join(chr(random.randint(0, 64)) for _ in range(size_bytes)))
     return path
 
 
