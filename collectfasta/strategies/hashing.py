@@ -73,10 +73,7 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
         # LazyObject so we need to cast the type here
         location = cast(HasLocationProtocol, self.original_storage).location
         assert issubclass(self.first_manifest_storage, LocationConstructorProtocol)
-        return cast(
-            OriginalStorage,
-            self.first_manifest_storage(location=location),
-        )
+        return self.first_manifest_storage(location=location)
 
     def wrap_storage(self, remote_storage: Storage) -> Storage:
         return self.remote_storage

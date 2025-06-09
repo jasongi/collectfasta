@@ -2,9 +2,10 @@ import binascii
 import hashlib
 from functools import lru_cache
 from pathlib import Path
+from typing import Union
 
 from azure.core.exceptions import ResourceNotFoundError
-from django.core.files.storage import Storage
+from django.core.files.storage import FileSystemStorage
 from storages.backends.azure_storage import AzureStorage
 
 from .base import CachingHashStrategy
@@ -13,7 +14,7 @@ from .base import CachingHashStrategy
 class AzureBlobStrategy(CachingHashStrategy[AzureStorage]):
     delete_not_found_exception = (ResourceNotFoundError,)
 
-    def get_remote_file_hash(self, prefixed_path: str) -> str | None:
+    def get_remote_file_hash(self, prefixed_path: str) -> Union[str, None]:
         normalized_path = prefixed_path.replace("\\", "/")
 
         blob_client = self.remote_storage.service_client.get_blob_client(
@@ -43,7 +44,7 @@ class AzureBlobStrategy(CachingHashStrategy[AzureStorage]):
         return hashlib.md5(hash_components.encode()).hexdigest()
 
     @lru_cache(maxsize=None)
-    def get_local_file_hash(self, path: str, local_storage: Storage) -> str:
+    def get_local_file_hash(self, path: str, local_storage: FileSystemStorage) -> str:
         stat = (Path(local_storage.base_location) / path).stat()
         file_size = stat.st_size
 
