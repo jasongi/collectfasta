@@ -64,13 +64,13 @@ class AzureBlobStorageTest(AzureStorage):
         continer_name = django_settings.AZURE_CONTAINER
 
         client = BlobServiceClient.from_connection_string(connection_string)
-
-        try:
-            client.create_container(continer_name)
-        except ResourceExistsError:
-            # recreate orphaned containers
-            client.delete_container(continer_name)
-            client.create_container(continer_name)
+        if "DefaultEndpointsProtocol=http;" in connection_string:
+            try:
+                client.create_container(continer_name)
+            except ResourceExistsError:
+                # recreate orphaned containers
+                client.delete_container(continer_name)
+                client.create_container(continer_name)
 
 
 class S3ManifestCustomStaticStorage(S3ManifestStaticStorage):
@@ -110,9 +110,9 @@ def create_big_static_file() -> pathlib.Path:
     return path
 
 
-def create_larger_than_4mb_referenced_static_file() -> tuple[
-    pathlib.Path, pathlib.Path
-]:
+def create_larger_than_4mb_referenced_static_file() -> (
+    tuple[pathlib.Path, pathlib.Path]
+):
     """Create a larger than 4mb static file, then another file with a reference to the file"""
     path = create_larger_than_4mb_file()
     reference_path = static_dir / f"{uuid.uuid4().hex}.html"
