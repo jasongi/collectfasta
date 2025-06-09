@@ -16,6 +16,7 @@ A faster collectstatic command. This is a fork of the archived collectfast by @a
 - `storages.backends.s3boto3.S3StaticStorage`
 - `storages.backends.s3boto3.S3ManifestStaticStorage`
 - `storages.backends.gcloud.GoogleCloudStorage`
+- `storages.backends.azure_storage.AzureStorage`
 - `django.core.files.storage.FileSystemStorage`
 
 Running Django's `collectstatic` command can become painfully slow as more and
@@ -63,6 +64,7 @@ collectfasta.strategies.boto3.Boto3Strategy|storages.backends.s3.S3StaticStorage
 collectfasta.strategies.boto3.Boto3ManifestMemoryStrategy (recommended)|storages.backends.s3.S3ManifestStaticStorage
 collectfasta.strategies.boto3.Boto3ManifestFileSystemStrategy|storages.backends.s3.S3ManifestStaticStorage
 collectfasta.strategies.gcloud.GoogleCloudStrategy|storages.backends.gcloud.GoogleCloudStorage
+collectfasta.strategies.azure.AzureBlobStrategy|storages.backends.azure_storage.AzureStorage
 collectfasta.strategies.filesystem.FileSystemStrategy|django.core.files.storage.FileSystemStorage
 
 Custom strategies can also be made for backends not listed above by

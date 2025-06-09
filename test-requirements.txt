@@ -1,7 +1,7 @@
 typing-extensions
 mock
 coveralls
-django-storages
+django-storages[azure,google,s3]
 boto3
 google-cloud-storage
 pytest

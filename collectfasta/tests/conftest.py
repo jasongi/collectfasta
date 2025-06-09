@@ -24,6 +24,7 @@ S3_CUSTOM_MANIFEST_STATIC_STORAGE_BACKEND = (
 )
 
 GOOGLE_CLOUD_STORAGE_BACKEND = "collectfasta.tests.utils.GoogleCloudStorageTest"
+AZURE_BLOB_STORAGE_BACKEND = "collectfasta.tests.utils.AzureBlobStorageTest"
 FILE_SYSTEM_STORAGE_BACKEND = "django.core.files.storage.FileSystemStorage"
 
 BOTO3_STRATEGY = "collectfasta.strategies.boto3.Boto3Strategy"
@@ -34,6 +35,7 @@ BOTO3_MANIFEST_FILE_SYSTEM_STRATEGY = (
     "collectfasta.strategies.boto3.Boto3ManifestFileSystemStrategy"
 )
 GOOGLE_CLOUD_STRATEGY = "collectfasta.strategies.gcloud.GoogleCloudStrategy"
+AZURE_BLOB_STRATEGY = "collectfasta.strategies.azure.AzureBlobStrategy"
 FILE_SYSTEM_STRATEGY = "collectfasta.strategies.filesystem.FileSystemStrategy"
 CACHING_FILE_SYSTEM_STRATEGY = (
     "collectfasta.strategies.filesystem.CachingFileSystemStrategy"
@@ -48,6 +50,7 @@ S3_BACKENDS = [
 BACKENDS = [
     *S3_BACKENDS,
     GOOGLE_CLOUD_STORAGE_BACKEND,
+    AZURE_BLOB_STORAGE_BACKEND,
     FILE_SYSTEM_STORAGE_BACKEND,
 ]
 
@@ -56,6 +59,7 @@ STRATEGIES = [
     BOTO3_MANIFEST_MEMORY_STRATEGY,
     BOTO3_MANIFEST_FILE_SYSTEM_STRATEGY,
     GOOGLE_CLOUD_STRATEGY,
+    AZURE_BLOB_STRATEGY,
     FILE_SYSTEM_STRATEGY,
     CACHING_FILE_SYSTEM_STRATEGY,
 ]
@@ -74,6 +78,7 @@ COMPATIBLE_STRATEGIES_FOR_BACKENDS = {
         BOTO3_MANIFEST_FILE_SYSTEM_STRATEGY,
     ],
     GOOGLE_CLOUD_STORAGE_BACKEND: [GOOGLE_CLOUD_STRATEGY],
+    AZURE_BLOB_STORAGE_BACKEND: [AZURE_BLOB_STRATEGY],
     FILE_SYSTEM_STORAGE_BACKEND: [FILE_SYSTEM_STRATEGY, CACHING_FILE_SYSTEM_STRATEGY],
 }
 
@@ -144,7 +149,16 @@ def uncollect_if_not_s3(strategy: tuple[str, str], **kwargs: dict) -> bool:
 
 def uncollect_if_not_cloud(strategy: tuple[str, str], **kwargs: dict) -> bool:
     backend, _ = strategy
-    return backend not in S3_BACKENDS and backend != GOOGLE_CLOUD_STORAGE_BACKEND
+    return (
+        backend not in S3_BACKENDS
+        and backend != GOOGLE_CLOUD_STORAGE_BACKEND
+        and backend != AZURE_BLOB_STORAGE_BACKEND
+    )
+
+
+def uncollect_if_not_azure(strategy: tuple[str, str], **kwargs: dict) -> bool:
+    backend, _ = strategy
+    return backend not in AZURE_BLOB_STORAGE_BACKEND
 
 
 live_test = pytest.mark.live_test
@@ -161,6 +175,7 @@ speed_test = composed(
 
 aws_backends_only = uncollect_if(func=uncollect_if_not_s3)
 cloud_backends_only = uncollect_if(func=uncollect_if_not_cloud)
+azure_backends_only = uncollect_if(func=uncollect_if_not_azure)
 
 
 def uncollect_if_not_two_pass(strategy: tuple[str, str], **kwargs: dict) -> bool:

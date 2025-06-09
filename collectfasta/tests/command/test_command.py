@@ -9,12 +9,14 @@ from pytest_mock import MockerFixture
 from collectfasta.management.commands.collectstatic import Command
 from collectfasta.tests.conftest import StrategyFixture
 from collectfasta.tests.conftest import aws_backends_only
+from collectfasta.tests.conftest import azure_backends_only
 from collectfasta.tests.conftest import cloud_backends_only
 from collectfasta.tests.conftest import exclude_two_pass
 from collectfasta.tests.conftest import live_test
 from collectfasta.tests.conftest import speed_test
 from collectfasta.tests.conftest import two_pass_only
 from collectfasta.tests.utils import clean_static_dir
+from collectfasta.tests.utils import create_larger_than_4mb_referenced_static_file
 from collectfasta.tests.utils import create_static_file
 from collectfasta.tests.utils import create_two_referenced_static_files
 from collectfasta.tests.utils import make_100_files
@@ -199,3 +201,35 @@ def test_calls_on_skip_hook(strategy: StrategyFixture, mocker: MockerFixture) ->
         ],
         any_order=True,
     )
+
+
+@azure_backends_only
+@live_test
+def test_azure_large_file_hashing(
+    strategy: StrategyFixture, mocker: MockerFixture
+) -> None:
+    from collectfasta.strategies.azure import AzureBlobStrategy
+
+    create_composite_hash_spy = mocker.spy(AzureBlobStrategy, "_create_composite_hash")
+
+    clean_static_dir()
+    create_two_referenced_static_files()
+    assert (
+        f"{strategy.expected_copied_files(2)} static files copied."
+        in call_collectstatic()
+    )
+    # files are < 4mb no composite hash should be created
+    assert create_composite_hash_spy.call_count == 0
+
+    create_larger_than_4mb_referenced_static_file()
+    # the small files should be cached now
+    assert (
+        f"{strategy.expected_copied_files(2)} static files copied."
+        in call_collectstatic()
+    )
+    # one file is > 4mb a composite hash should be created
+    assert create_composite_hash_spy.call_count == 1
+    # file state should now be cached
+    assert "0 static files copied." in call_collectstatic()
+    # again the the > 4mb file triggers a hash creation
+    assert create_composite_hash_spy.call_count == 2
