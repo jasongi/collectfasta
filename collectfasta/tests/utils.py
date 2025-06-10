@@ -74,7 +74,7 @@ class AzureBlobStorageTest(AzureStorage):
 
 
 class S3ManifestCustomStaticStorage(S3ManifestStaticStorage):
-    location = "prefix"
+    location = f"prefix-{django_settings.AWS_LOCATION}"
     manifest_name = "prefixfiles.json"
 
 
