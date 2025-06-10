@@ -24,7 +24,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
-        django-version: ['>=4.2,<4.3', '>=5.0,<5.1', '>=5.1,<5.2', '>=5.2,<5.3']
+        django-version: ['>=4.2,<4.3', '>=5.1,<5.2', '>=5.2,<5.3']
     name: Test Python ${{ matrix.python-version }} Django ${{ matrix.django-version }}
     steps:
       - uses: actions/checkout@v4
