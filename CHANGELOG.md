@@ -1,4 +1,8 @@
 # Changelog
+## 3.3.0
+- added support for `storages.backends.azure_storage.AzureStorage` - contributed by @jgoedeke
+- support for Django 5.2
+
 ## 3.2.1
 - change minimum django-storages version
 - support for Django 5.1 and python 3.13

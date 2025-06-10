@@ -155,7 +155,7 @@ Install test dependencies and target Django version:
 
 ```bash
 python3 -m pip install -r test-requirements.txt
-python3 -m pip install django==5.1.4
+python3 -m pip install django==5.2.3
 ```
 
 Run test suite:
