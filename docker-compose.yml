@@ -29,7 +29,7 @@ services:
     command: -scheme http
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite
-    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000
+    command: azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --skipApiVersionCheck --loose
     ports:
       - '10000:10000' # Blob service
 
