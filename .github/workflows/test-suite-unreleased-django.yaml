@@ -21,4 +21,4 @@ jobs:
           pip install --upgrade -r test-requirements.txt
           pip install .
       - name: Run tests
-        run: make docker-up && coverage run -m pytest --speedtest
+        run: make docker-up && coverage run -m pytest -svv --speedtest
