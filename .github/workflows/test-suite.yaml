@@ -48,7 +48,7 @@ jobs:
           GCLOUD_API_CREDENTIALS_BASE64: ${{ secrets.GCLOUD_API_CREDENTIALS_BASE64 }}
           AZURE_CONNECTION_STRING: ${{ secrets.AZURE_CONNECTION_STRING }}
         if: github.event_name == 'push' && github.repository == 'jasongi/collectfasta'
-        run: coverage run -m pytest
+        run: coverage run -m pytest -svv
   test-django-5:
     runs-on: ubuntu-latest
     strategy:
