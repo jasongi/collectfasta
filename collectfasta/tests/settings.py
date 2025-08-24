@@ -80,7 +80,7 @@ if GCLOUD_API_CREDENTIALS_BASE64:
             file.name
         )
 else:
-    GS_CUSTOM_ENDPOINT = "http://127.0.0.1:5050"
+    GS_CUSTOM_ENDPOINT = "http://127.0.0.1:6050"
     try:
         storage.Client(
             client_options={"api_endpoint": GS_CUSTOM_ENDPOINT},

@@ -25,7 +25,7 @@ services:
   gcloudstorage:
     image: fsouza/fake-gcs-server
     ports:
-      - '5050:4443'
+      - '6050:4443'
     command: -scheme http
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite

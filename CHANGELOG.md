@@ -1,4 +1,7 @@
 # Changelog
+## 3.3.1
+- fix for upcoming release of django 6.0 changes in django commit c1aa4a7a79a56fa46793d128bcf42795e2149595 which returns a "deleted" key from the collect command
+
 ## 3.3.0
 - added support for `storages.backends.azure_storage.AzureStorage` - contributed by @jgoedeke
 - support for Django 5.2
