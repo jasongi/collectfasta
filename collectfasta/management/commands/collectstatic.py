@@ -85,6 +85,8 @@ class Command(collectstatic.Command):
             self.copied_files = []
             self.symlinked_files = []
             self.unmodified_files = []
+            self.deleted_files: list[str] = []
+            self.skipped_files: list[str] = []
             self.num_copied_files = 0
             source_storage = self.storage
             self.storage = second_pass_strategy.wrap_storage(self.storage)
@@ -96,6 +98,8 @@ class Command(collectstatic.Command):
                 "modified": self.copied_files + self.symlinked_files,
                 "unmodified": self.unmodified_files,
                 "post_processed": self.post_processed_files,
+                "deleted": self.deleted_files,
+                "skipped": self.skipped_files,
             }
 
         return stats
