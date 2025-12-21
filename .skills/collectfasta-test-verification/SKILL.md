@@ -8,10 +8,11 @@ description: Verify Collectfasta changes by running the project test commands de
 ## Choose the right test target
 
 - Read `Makefile` to find the appropriate test target.
+- For linting and formatting, run `make checks`
 - Since you don't have credentials, only use the docker tests
 - Default to `make test-docker` for a standard run.
 - If you want to test performance, run `make test-speed` - otherwise, avoid this, it is slower
-- If you want to investigate an error, run `make test-docker-ff` - it is fast-fail and verbose logging 
+- If you want to investigate an error, run `make test-docker-ff` - it is fast-fail and verbose logging
 
 ## Run and report
 

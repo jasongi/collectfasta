@@ -1,6 +1,8 @@
 include README.md
 include LICENSE
 include collectfasta/py.typed
+exclude .codex/skills
+recursive-exclude .skills *.md
 exclude conftest.py
 exclude collectfasta/tests
 recursive-exclude localstack *

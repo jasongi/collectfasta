@@ -187,7 +187,7 @@ python3 -m pip install -r lint-requirements.txt
 Run linters and static type check:
 
 ```bash
-make lint
+make checks
 ```
 
 

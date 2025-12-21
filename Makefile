@@ -36,12 +36,5 @@ distribute: build
 test-distribute: build
 	python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
 
-lint:
-	flake8
-	sorti --check .
-	black --check .
-	mypy .
-
-format:
-	sorti .
-	black .
+checks:
+	pre-commit run --all-files
