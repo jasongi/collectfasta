@@ -23,8 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.13']
-        django-version: ['>=5.2,<5.3']
+        python-version: ['3.14']
+        django-version: ['>=6.0,<6.1']
     name: Live test  on latest Python (${{ matrix.python-version }}) and latest Django (${{ matrix.django-version }})
     steps:
       - uses: actions/checkout@v4
@@ -49,12 +49,21 @@ jobs:
           AZURE_CONNECTION_STRING: ${{ secrets.AZURE_CONNECTION_STRING }}
         if: github.event_name == 'push' && github.repository == 'jasongi/collectfasta'
         run: coverage run -m pytest -svv
-  test-django-5:
+  test-django:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
-        django-version: ['>=4.2,<4.3', '>=5.1,<5.2', '>=5.2,<5.3']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        django-version: ['>=4.2,<4.3', '>=5.2,<5.3', '>=6.0,<6.1']
+        exclude:
+          - python-version: '3.10'
+            django-version: '>=6.0,<6.1'
+          - python-version: '3.11'
+            django-version: '>=6.0,<6.1'
+          - python-version: '3.13'
+            django-version: '>=4.2,<4.3'
+          - python-version: '3.14'
+            django-version: '>=4.2,<4.3'
     name: Test Python ${{ matrix.python-version }} Django ${{ matrix.django-version }}
     steps:
       - uses: actions/checkout@v4
@@ -73,27 +82,3 @@ jobs:
           pip install .
       - name: Run tests against docker env
         run: make docker-up && coverage run -m pytest -svv --speedtest
-  test-3-9:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.9']
-        django-version: ['>=4.2,<4.3']
-    name: Test Python ${{ matrix.python-version }} Django ${{ matrix.django-version }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('setup.cfg') }}
-          restore-keys: ${{ runner.os }}-pip
-      - name: Install dependencies
-        run: |
-          pip install --upgrade django'${{ matrix.django-version }}'
-          pip install --upgrade -r test-requirements.txt
-          pip install .
-      - name: Run tests against docker env
-        run: make docker-up && coverage run -m pytest --speedtest
