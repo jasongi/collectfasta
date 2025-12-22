@@ -20,7 +20,7 @@ description: Update Collectfasta's supported Python/Django versions across CI, p
 - Update `Programming Language :: Python :: X.Y` classifiers.
 - Add `Framework :: Django :: X.Y` classifiers for supported series.
 - Update `mypy` `python_version` to the minimum supported Python.
-
+- Update version in collectfasta/__init__.py
 ## Update the changelog
 
 - Add a new entry at the top of `CHANGELOG.md`.
