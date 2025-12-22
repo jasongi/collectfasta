@@ -140,6 +140,13 @@ you can set `COLLECTFASTA_DEBUG = True` in your Django settings file.
 Please feel free to contribute by using issues and pull requests. Discussion is
 open and welcome.
 
+### Versioning policy
+
+We follow semantic versioning with the following support policy:
+unsupported Django and Python versions are dropped after their EOL date. When
+dropping support for an unsupported Django or Python version, Collectfasta only
+bumps a patch version.
+
 ### Testing
 
 The test suite is built to run against localstack / fake-gcs-server OR live S3 and GCloud buckets.
@@ -180,7 +187,7 @@ python3 -m pip install -r lint-requirements.txt
 Run linters and static type check:
 
 ```bash
-make lint
+make checks
 ```
 
 

@@ -13,3 +13,4 @@ storage-credentials
 .idea
 .python-version
 .dmypy.json
+.cache/

@@ -1,4 +1,9 @@
 # Changelog
+## 3.3.2
+- add support for Django 6.0 and Python 3.14
+- drop support for Python 3.9 and Django 5.1
+- add Django framework classifiers and update CI matrix
+
 ## 3.3.1
 - fix for upcoming release of django 6.0 changes in django commit c1aa4a7a79a56fa46793d128bcf42795e2149595 which returns a "deleted" key from the collect command
 
