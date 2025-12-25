@@ -176,6 +176,9 @@ class Boto3Strategy(CachingHashStrategy[S3Storage]):
         self.remote_storage = self.wrapped_storage(remote_storage)
         super().__init__(self.remote_storage)
         self.use_gzip = settings.aws_is_gzipped
+        if hasattr(self.remote_storage, "entries"):
+            # ensure entries is loaded prior to the first exists call
+            self.remote_storage.entries
 
     def wrapped_storage(self, remote_storage: S3Storage) -> S3StorageWrapped:
         if isinstance(remote_storage, S3ManifestStaticStorage):
@@ -214,11 +217,6 @@ class Boto3Strategy(CachingHashStrategy[S3Storage]):
             logger.debug("Error on remote hash request", exc_info=True)
             return None
         return self._clean_hash(hash_)
-
-    def pre_should_copy_hook(self) -> None:
-        if settings.threads:
-            logger.info("Resetting connection")
-            self.remote_storage._connection = None
 
 
 class Boto3WithoutPrefixStrategy(WithoutPrefixMixin, Boto3Strategy):

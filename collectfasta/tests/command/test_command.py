@@ -233,3 +233,92 @@ def test_azure_large_file_hashing(
     assert "0 static files copied." in call_collectstatic()
     # again the the > 4mb file triggers a hash creation
     assert create_composite_hash_spy.call_count == 2
+
+
+def test_check_cache_size_warning_when_exceeds_max_entries(
+    mocker: MockerFixture,
+) -> None:
+    """Test that a warning is logged when number of files exceeds MAX_ENTRIES."""
+    cmd = Command()
+    cmd.collectfasta_enabled = True
+    mock_log = mocker.patch.object(cmd, "log")
+
+    # Test with MAX_ENTRIES set and exceeded
+    with override_django_settings(
+        CACHES={
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "OPTIONS": {"MAX_ENTRIES": 10},
+            }
+        }
+    ):
+        cmd._check_cache_size(20)
+        mock_log.assert_called_once()
+        call_args = mock_log.call_args[0][0]
+        assert "Warning: You have 20 static files" in call_args
+        assert "MAX_ENTRIES is set to 10" in call_args
+        assert "set MAX_ENTRIES to 20 or higher" in call_args
+
+
+def test_check_cache_size_no_warning_when_under_max_entries(
+    mocker: MockerFixture,
+) -> None:
+    """Test that no warning is logged when number of files is under MAX_ENTRIES."""
+    cmd = Command()
+    cmd.collectfasta_enabled = True
+    mock_log = mocker.patch.object(cmd, "log")
+
+    # Test with MAX_ENTRIES set but not exceeded
+    with override_django_settings(
+        CACHES={
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "OPTIONS": {"MAX_ENTRIES": 100},
+            }
+        }
+    ):
+        cmd._check_cache_size(50)
+        mock_log.assert_not_called()
+
+
+def test_check_cache_size_warning_when_max_entries_default(
+    mocker: MockerFixture,
+) -> None:
+    """Test that a warning is logged when MAX_ENTRIES uses default value of 300."""
+    cmd = Command()
+    cmd.collectfasta_enabled = True
+    mock_log = mocker.patch.object(cmd, "log")
+
+    # Test with no MAX_ENTRIES set (should use default of 300)
+    with override_django_settings(
+        CACHES={
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            }
+        }
+    ):
+        cmd._check_cache_size(500)
+        mock_log.assert_called_once()
+        call_args = mock_log.call_args[0][0]
+        assert "Warning: You have 500 static files" in call_args
+        assert "MAX_ENTRIES is set to 300" in call_args
+
+
+def test_check_cache_size_no_warning_when_collectfasta_disabled(
+    mocker: MockerFixture,
+) -> None:
+    """Test that no warning is logged when collectfasta is disabled."""
+    cmd = Command()
+    cmd.collectfasta_enabled = False
+    mock_log = mocker.patch.object(cmd, "log")
+
+    with override_django_settings(
+        CACHES={
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "OPTIONS": {"MAX_ENTRIES": 10},
+            }
+        }
+    ):
+        cmd._check_cache_size(100)
+        mock_log.assert_not_called()

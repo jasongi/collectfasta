@@ -30,6 +30,14 @@ def make_100_files():
         executor.shutdown(wait=True)
 
 
+def make_1000_files():
+    """Create 1000 files for intensive testing."""
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        for _ in range(500):
+            executor.submit(create_big_referenced_static_file)
+        executor.shutdown(wait=True)
+
+
 def get_fake_client():
     from google.api_core.client_options import ClientOptions
     from google.auth.credentials import AnonymousCredentials
