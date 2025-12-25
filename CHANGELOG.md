@@ -1,4 +1,11 @@
 # Changelog
+## 3.3.3
+- add warning for improper MAX_ENTRIES in cache setting
+- made the two-pass strategy properly multi-threaded
+- for the boto3 strategy, prefetch the entries on init so that it is the not triggered multiple times within threads.
+- removed `_connection` reset in boto3 strategy which does nothing as it is not longer used in django-storages. When implemented, django-storages did not support mutli-threading, but it was added in https://github.com/jschneier/django-storages/commit/142e822bd6d6a84840a822c3ccf6a0bd9a09da8c and the `_connection` field was removed.
+
+
 ## 3.3.2
 - add support for Django 6.0 and Python 3.14
 - drop support for Python 3.9 and Django 5.1

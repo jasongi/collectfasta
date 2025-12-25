@@ -92,8 +92,16 @@ class Command(collectstatic.Command):
             self.storage = second_pass_strategy.wrap_storage(self.storage)
             self.strategy = second_pass_strategy
             self.log(f"Running second pass with {self.strategy.__class__.__name__}...")
-            for f, prefixed in collect_from_folder(source_storage):
-                self.maybe_copy_file((f, prefixed, source_storage))
+            if settings.threads and settings.threads > 1:
+                tasks = [
+                    (f, prefixed, source_storage)
+                    for f, prefixed in collect_from_folder(source_storage)
+                ]
+                with ThreadPoolExecutor(settings.threads) as pool:
+                    pool.map(self.maybe_copy_file, tasks)
+            else:
+                for f, prefixed in collect_from_folder(source_storage):
+                    self.maybe_copy_file((f, prefixed, source_storage))
             return {
                 "modified": self.copied_files + self.symlinked_files,
                 "unmodified": self.unmodified_files,
@@ -104,13 +112,42 @@ class Command(collectstatic.Command):
 
         return stats
 
+    def _check_cache_size(self, num_files: int) -> None:
+        """
+        Check if the number of static files exceeds the cache MAX_ENTRIES setting
+        and print a warning if so.
+        """
+        if not self.collectfasta_enabled:
+            return
+
+        try:
+            cache_settings = getattr(django_settings, "CACHES", {}).get(
+                settings.cache, {}
+            )
+            max_entries = cache_settings.get("OPTIONS", {}).get("MAX_ENTRIES", 300)
+
+            if max_entries is not None and num_files > max_entries:
+                self.log(
+                    f"Warning: You have {num_files} static files, but your cache "
+                    f"MAX_ENTRIES is set to {max_entries}. This will make collectstatic slow. "
+                    f"To fix, set MAX_ENTRIES to {num_files} or higher. ",
+                    level=1,
+                )
+        except Exception:
+            # Don't fail collection if we can't check cache settings
+            pass
+
     def collect(self) -> Dict[str, List[str]]:
         """
         Override collect to copy files concurrently. The tasks are populated by
         Command.copy_file() which is called by super().collect().
         """
         if not self.collectfasta_enabled or not settings.threads:
-            return self.second_pass(super().collect())
+            result = super().collect()
+            # For non-threaded mode, check the number of found files
+            second_pass_result = self.second_pass(result)
+            self._check_cache_size(len(self.found_files))
+            return second_pass_result
 
         # Store original value of post_process in super_post_process and always
         # set the value to False to prevent the default behavior from
@@ -120,12 +157,18 @@ class Command(collectstatic.Command):
 
         return_value = super().collect()
 
+        # Check if the number of files exceeds cache MAX_ENTRIES
+        self._check_cache_size(len(self.tasks))
+
         with ThreadPoolExecutor(settings.threads) as pool:
             pool.map(self.maybe_copy_file, self.tasks)
 
         self.maybe_post_process(super_post_process)
         return_value["post_processed"] = self.post_processed_files
-        return self.second_pass(return_value)
+        second_pass_result = self.second_pass(return_value)
+        self._check_cache_size(len(self.found_files))
+
+        return second_pass_result
 
     def handle(self, *args: Any, **options: Any) -> Optional[str]:
         """Override handle to suppress summary output."""
