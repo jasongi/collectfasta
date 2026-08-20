@@ -1,4 +1,9 @@
 # Changelog
+## 3.3.4
+- add support for Django 6.1
+- drop support for the end-of-life Django 4.2 release series
+- update CI and package metadata for supported Python 3.10-3.14 and Django 5.2-6.1 combinations
+
 ## 3.3.3
 - add warning for improper MAX_ENTRIES in cache setting
 - made the two-pass strategy properly multi-threaded
