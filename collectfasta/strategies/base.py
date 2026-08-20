@@ -10,10 +10,7 @@ from typing import ClassVar
 from typing import Generic
 from typing import NoReturn
 from typing import Optional
-from typing import Tuple
-from typing import Type
 from typing import TypeVar
-from typing import Union
 
 from django.core.cache import caches
 from django.core.exceptions import ImproperlyConfigured
@@ -32,7 +29,7 @@ logger = logging.getLogger(__name__)
 class Strategy(abc.ABC, Generic[_RemoteStorage]):
     # Exceptions raised by storage backend for delete calls to non-existing
     # objects. The command silently catches these.
-    delete_not_found_exception: ClassVar[Tuple[Type[Exception], ...]] = ()
+    delete_not_found_exception: ClassVar[tuple[type[Exception], ...]] = ()
 
     def __init__(self, remote_storage: _RemoteStorage) -> None:
         self.remote_storage = remote_storage
@@ -81,8 +78,8 @@ class Strategy(abc.ABC, Generic[_RemoteStorage]):
         return None
 
     def copy_args_hook(
-        self, args: Tuple[str, str, Storage]
-    ) -> Tuple[str, str, Storage]:
+        self, args: tuple[str, str, Storage]
+    ) -> tuple[str, str, Storage]:
         """Hook called before copying a file. Use this to modify the path or storage."""
         return args
 
@@ -126,7 +123,7 @@ class HashStrategy(Strategy[_RemoteStorage], abc.ABC):
         return file_hash
 
     @abc.abstractmethod
-    def get_remote_file_hash(self, prefixed_path: str) -> Optional[str]: ...
+    def get_remote_file_hash(self, prefixed_path: str) -> str | None: ...
 
 
 class CachingHashStrategy(HashStrategy[_RemoteStorage], abc.ABC):
@@ -192,7 +189,7 @@ class DisabledStrategy(Strategy):
         raise NotImplementedError
 
 
-def load_strategy(klass: Union[str, type, object]) -> Type[Strategy[Storage]]:
+def load_strategy(klass: str | type | object) -> type[Strategy[Storage]]:
     if isinstance(klass, str):
         klass = pydoc.locate(klass)
     if not isinstance(klass, type) or not issubclass(klass, Strategy):

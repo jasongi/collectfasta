@@ -1,14 +1,13 @@
-from typing import Container
-from typing import Type
+from collections.abc import Container
+from typing import Final
 from typing import TypeVar
 
 from django.conf import settings
-from typing_extensions import Final
 
 T = TypeVar("T")
 
 
-def _get_setting(type_: Type[T], key: str, default: T) -> T:
+def _get_setting(type_: type[T], key: str, default: T) -> T:
     value = getattr(settings, key, default)
     if not isinstance(value, type_):
         raise ValueError(

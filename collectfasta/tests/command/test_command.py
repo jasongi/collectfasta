@@ -161,7 +161,7 @@ def test_calls_post_copy_hook(strategy: StrategyFixture, mocker: MockerFixture) 
         "collectfasta.strategies.base.Strategy.post_copy_hook", autospec=True
     )
     clean_static_dir()
-    (path_one, path_two) = create_two_referenced_static_files()
+    path_one, path_two = create_two_referenced_static_files()
     cmd = Command()
     cmd.run_from_argv(["manage.py", "collectstatic", "--noinput"])
     post_copy_hook.assert_has_calls(
@@ -184,7 +184,7 @@ def test_calls_on_skip_hook(strategy: StrategyFixture, mocker: MockerFixture) ->
         "collectfasta.strategies.base.Strategy.on_skip_hook", autospec=True
     )
     clean_static_dir()
-    (path_one, path_two) = create_two_referenced_static_files()
+    path_one, path_two = create_two_referenced_static_files()
     cmd = Command()
     cmd.run_from_argv(["manage.py", "collectstatic", "--noinput"])
     on_skip_hook.assert_not_called()

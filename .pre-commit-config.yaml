@@ -2,7 +2,7 @@ default_language_version:
   python: python3.11
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: check-case-conflict
       - id: check-merge-conflict
@@ -11,13 +11,13 @@ repos:
       - id: debug-statements
       - id: detect-private-key
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.15.1
+    rev: v3.21.2
     hooks:
       - id: pyupgrade
         args:
-          - --py36-plus
+          - --py310-plus
   - repo: https://github.com/myint/autoflake
-    rev: v2.3.0
+    rev: v2.3.3
     hooks:
       - id: autoflake
         args:
@@ -25,20 +25,20 @@ repos:
           - --remove-all-unused-imports
           - --ignore-init-module-imports
   - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+    rev: 8.0.1
     hooks:
       - id: isort
   - repo: https://github.com/psf/black
-    rev: 24.2.0
+    rev: 26.5.1
     hooks:
       - id: black
   - repo: https://github.com/asottile/blacken-docs
-    rev: 1.16.0
+    rev: 1.20.0
     hooks:
       - id: blacken-docs
-        additional_dependencies: [black==24.2.0]
+        additional_dependencies: [black==26.5.1]
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.0.0
+    rev: 7.3.0
     hooks:
       - id: flake8
         additional_dependencies:
@@ -46,11 +46,11 @@ repos:
           - flake8-comprehensions
           - flake8-tidy-imports
   - repo: https://github.com/sirosen/check-jsonschema
-    rev: 0.28.0
+    rev: 0.38.0
     hooks:
       - id: check-github-workflows
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.0
+    rev: v2.3.1
     hooks:
       - id: mypy
         args: []
@@ -64,12 +64,12 @@ repos:
           - pytest
           - pytest-mock
           - pytest-django
-          - django-stubs==5.1.0
+          - django-stubs==6.1.0
           - boto3-stubs[s3]
           - types-s3transfer
           - pytest-uncollect-if>=0.1.2
   - repo: https://github.com/mgedmin/check-manifest
-    rev: "0.49"
+    rev: "0.51"
     hooks:
       - id: check-manifest
 
