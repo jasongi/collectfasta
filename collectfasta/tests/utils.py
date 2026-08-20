@@ -3,9 +3,10 @@ import os
 import pathlib
 import random
 import uuid
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
-from typing import Callable
+from typing import Final
 from typing import TypeVar
 from typing import cast
 
@@ -14,7 +15,6 @@ from django.utils.module_loading import import_string
 from storages.backends.azure_storage import AzureStorage
 from storages.backends.gcloud import GoogleCloudStorage
 from storages.backends.s3boto3 import S3ManifestStaticStorage
-from typing_extensions import Final
 
 from collectfasta import settings
 

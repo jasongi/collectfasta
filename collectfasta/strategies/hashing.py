@@ -1,9 +1,6 @@
+from collections.abc import Callable
 from typing import Any
-from typing import Callable
-from typing import Optional
 from typing import Protocol
-from typing import Tuple
-from typing import Type
 from typing import Union
 from typing import cast
 from typing import runtime_checkable
@@ -21,7 +18,7 @@ from .base import Strategy
 @runtime_checkable
 class LocationConstructorProtocol(Protocol):
 
-    def __init__(self, location: Optional[str]) -> None: ...
+    def __init__(self, location: str | None) -> None: ...
 
 
 @runtime_checkable
@@ -53,8 +50,8 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
     the files to the remote storage
     """
 
-    first_manifest_storage: Type[OriginalStorage]
-    second_strategy: Type[Strategy[Storage]]
+    first_manifest_storage: type[OriginalStorage]
+    second_strategy: type[Strategy[Storage]]
     original_storage: OriginalStorage
     memory_storage: OriginalStorage
 
@@ -78,7 +75,7 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
     def wrap_storage(self, remote_storage: Storage) -> Storage:
         return self.remote_storage
 
-    def get_remote_file_hash(self, prefixed_path: str) -> Optional[str]:
+    def get_remote_file_hash(self, prefixed_path: str) -> str | None:
         try:
             return super().get_local_file_hash(prefixed_path, self.remote_storage)
         except FileNotFoundError:
@@ -98,7 +95,7 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
             return self.second_strategy(self.original_storage)
 
 
-Task = Tuple[str, str, Storage]
+Task = tuple[str, str, Storage]
 
 
 class StrategyWithLocationProtocol:

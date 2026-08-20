@@ -1,11 +1,6 @@
+from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
-from typing import Dict
-from typing import Generator
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Type
 
 from django.conf import settings as django_settings
 from django.contrib.staticfiles.management.commands import collectstatic
@@ -19,7 +14,7 @@ from collectfasta.strategies import DisabledStrategy
 from collectfasta.strategies import Strategy
 from collectfasta.strategies import load_strategy
 
-Task = Tuple[str, str, Storage]
+Task = tuple[str, str, Storage]
 
 
 def collect_from_folder(
@@ -42,13 +37,13 @@ class Command(collectstatic.Command):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.num_copied_files = 0
-        self.tasks: List[Task] = []
+        self.tasks: list[Task] = []
         self.collectfasta_enabled = settings.enabled
         self.strategy: Strategy = DisabledStrategy(Storage())
-        self.found_files: Dict[str, Tuple[Storage, str]] = {}
+        self.found_files: dict[str, tuple[Storage, str]] = {}
 
     @staticmethod
-    def _load_strategy() -> Type[Strategy[Storage]]:
+    def _load_strategy() -> type[Strategy[Storage]]:
         strategy_str = getattr(django_settings, "COLLECTFASTA_STRATEGY", None)
         if strategy_str is not None:
             return load_strategy(strategy_str)
@@ -79,7 +74,7 @@ class Command(collectstatic.Command):
             self.storage = self.strategy.wrap_storage(self.storage)
         super().set_options(**options)
 
-    def second_pass(self, stats: Dict[str, List[str]]) -> Dict[str, List[str]]:
+    def second_pass(self, stats: dict[str, list[str]]) -> dict[str, list[str]]:
         second_pass_strategy = self.strategy.second_pass_strategy()
         if self.collectfasta_enabled and second_pass_strategy:
             self.copied_files = []
@@ -137,7 +132,7 @@ class Command(collectstatic.Command):
             # Don't fail collection if we can't check cache settings
             pass
 
-    def collect(self) -> Dict[str, List[str]]:
+    def collect(self) -> dict[str, list[str]]:
         """
         Override collect to copy files concurrently. The tasks are populated by
         Command.copy_file() which is called by super().collect().
@@ -170,7 +165,7 @@ class Command(collectstatic.Command):
 
         return second_pass_result
 
-    def handle(self, *args: Any, **options: Any) -> Optional[str]:
+    def handle(self, *args: Any, **options: Any) -> str | None:
         """Override handle to suppress summary output."""
         ret = super().handle(**options)
         if not self.collectfasta_enabled:

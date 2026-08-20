@@ -2,8 +2,6 @@ import logging
 import os
 import tempfile
 from typing import Any
-from typing import Dict
-from typing import Optional
 from typing import TypeVar
 from typing import Union
 from typing import cast
@@ -54,7 +52,7 @@ class S3StorageWrapperBase(S3Boto3Storage):
             self._transfer_config = TransferConfig(use_threads=self.use_threads)
 
         self.preload_metadata = True
-        self._entries: Dict[str, str] = {}
+        self._entries: dict[str, str] = {}
 
     # restores the "preload_metadata" method that was removed in django-storages 1.10
     def _save(self, name, content):
@@ -197,14 +195,14 @@ class Boto3Strategy(CachingHashStrategy[S3Storage]):
         return path.replace("\\", "")
 
     @staticmethod
-    def _clean_hash(quoted_hash: Optional[str]) -> Optional[str]:
+    def _clean_hash(quoted_hash: str | None) -> str | None:
         """boto returns hashes wrapped in quotes that need to be stripped."""
         if quoted_hash is None:
             return None
         assert quoted_hash[0] == quoted_hash[-1] == '"'
         return quoted_hash[1:-1]
 
-    def get_remote_file_hash(self, prefixed_path: str) -> Optional[str]:
+    def get_remote_file_hash(self, prefixed_path: str) -> str | None:
         normalized_path = self._normalize_path(prefixed_path)
         logger.debug("Getting file hash", extra={"normalized_path": normalized_path})
         try:
