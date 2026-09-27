@@ -138,8 +138,8 @@ def create_larger_than_4mb_file() -> pathlib.Path:
 
 def clean_static_dir() -> None:
     clean_static_dir_recurse(static_dir.as_posix())
-    clean_static_dir_recurse(django_settings.AWS_LOCATION)
-    clean_static_dir_recurse(S3ManifestCustomStaticStorage.location)
+    clean_static_dir_recurse(f".collectfasta/{django_settings.AWS_LOCATION}")
+    clean_static_dir_recurse(f".collectfasta/{S3ManifestCustomStaticStorage.location}")
 
 
 def clean_static_dir_recurse(location: str) -> None:

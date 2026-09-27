@@ -1,9 +1,15 @@
+import pathlib
 import timeit
+import uuid
+from typing import Any
 
 import pytest
+from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
+from django.core.files.base import ContentFile
 from django.test import override_settings as override_django_settings
 from django.test.utils import override_settings
+from django.utils.module_loading import import_string
 from pytest_mock import MockerFixture
 
 from collectfasta.management.commands.collectstatic import Command
@@ -22,6 +28,7 @@ from collectfasta.tests.utils import create_two_referenced_static_files
 from collectfasta.tests.utils import make_100_files
 from collectfasta.tests.utils import override_setting
 from collectfasta.tests.utils import override_storage_attr
+from collectfasta.tests.utils import static_dir
 
 from .utils import call_collectstatic
 
@@ -322,3 +329,277 @@ def test_check_cache_size_no_warning_when_collectfasta_disabled(
     ):
         cmd._check_cache_size(100)
         mock_log.assert_not_called()
+
+
+def _s3_manifest_keys(storage: Any) -> list[str]:
+    """Keys in the bucket that look like the manifest, including suffixed copies."""
+    stem, ext = storage.manifest_name.rsplit(".", 1)
+    prefix = f"{storage.location}/{stem}"
+    return sorted(
+        obj.key
+        for obj in storage.bucket.objects.filter(Prefix=prefix)
+        if obj.key.endswith(f".{ext}")
+    )
+
+
+@aws_backends_only
+@two_pass_only
+@live_test
+@override_storage_attr("file_overwrite", False)
+def test_manifest_not_renamed_when_file_overwrite_false(
+    strategy: StrategyFixture,
+) -> None:
+    """
+    Regression test for https://github.com/jasongi/collectfasta/issues/19
+
+    With a location prefix and file_overwrite=False, re-running collectstatic
+    against a bucket that already holds the manifest must overwrite it in place
+    rather than saving it under a suffixed name like staticfiles_AbC123.json.
+    """
+    storage = import_string(strategy.backend)()
+    assert storage.location, "this bug only shows up with a location prefix"
+    expected_key = f"{storage.location}/{storage.manifest_name}"
+    # start from a clean slate so leftovers from earlier runs don't interfere
+    for key in _s3_manifest_keys(storage):
+        storage.bucket.Object(key).delete()
+
+    clean_static_dir()
+    create_two_referenced_static_files()
+    call_collectstatic()
+    assert _s3_manifest_keys(storage) == [expected_key]
+
+    # a second run, with the manifest already present in the bucket
+    create_two_referenced_static_files()
+    call_collectstatic()
+    assert _s3_manifest_keys(storage) == [expected_key]
+
+
+@aws_backends_only
+@override_storage_attr("file_overwrite", False)
+def test_s3_wrapper_exists_false_after_delete(strategy: StrategyFixture) -> None:
+    """
+    S3StorageWrapperBase caches entries keyed by the full (location-prefixed)
+    key, so delete() must purge the normalised name or exists() keeps reporting
+    a deleted object as present. See issue #19.
+    """
+    from collectfasta.strategies.boto3 import Boto3Strategy
+
+    wrapped = Boto3Strategy(import_string(strategy.backend)()).remote_storage
+    assert wrapped.location
+    name = f"{uuid.uuid4().hex}.txt"
+    wrapped.save(name, ContentFile(b"hello"))
+    assert wrapped.exists(name)
+
+    wrapped.delete(name)
+    assert not wrapped.exists(name)
+
+
+@aws_backends_only
+@live_test
+def test_manifest_saved_under_configured_manifest_name(
+    strategy: StrategyFixture,
+) -> None:
+    """
+    A storage subclass that sets its own manifest_name must have its manifest
+    written under that name, since that is the only name Django reads back.
+    """
+    storage = import_string(strategy.backend)()
+    if not hasattr(storage, "manifest_name"):
+        pytest.skip("not a manifest storage")
+    for key in _s3_manifest_keys(storage):
+        storage.bucket.Object(key).delete()
+
+    clean_static_dir()
+    create_two_referenced_static_files()
+    call_collectstatic()
+    assert storage.bucket.Object(
+        f"{storage.location}/{storage.manifest_name}"
+    ).content_length
+
+
+@aws_backends_only
+@override_storage_attr("file_overwrite", False)
+def test_manifest_overwritten_in_place_when_it_already_exists(
+    strategy: StrategyFixture,
+) -> None:
+    """
+    Even if the manifest is still in the bucket when it is saved (e.g. two
+    deploys running at once), it must keep its exact name, since that is the
+    only name Django reads back.
+    """
+    from collectfasta.strategies.boto3 import Boto3Strategy
+
+    wrapped = Boto3Strategy(import_string(strategy.backend)()).remote_storage
+    if not hasattr(wrapped, "manifest_name"):
+        pytest.skip("not a manifest storage")
+    for key in _s3_manifest_keys(wrapped):
+        wrapped.bucket.Object(key).delete()
+
+    manifest = ContentFile(b'{"version": "1.1", "paths": {}, "hash": ""}')
+    try:
+        wrapped.save(wrapped.manifest_name, manifest)
+        assert wrapped.exists(wrapped.manifest_name)
+        saved_name = wrapped.save(wrapped.manifest_name, manifest)
+
+        assert saved_name == wrapped.manifest_name
+        assert _s3_manifest_keys(wrapped) == [
+            f"{wrapped.location}/{wrapped.manifest_name}"
+        ]
+    finally:
+        for key in _s3_manifest_keys(wrapped):
+            wrapped.bucket.Object(key).delete()
+
+
+@aws_backends_only
+@two_pass_only
+@live_test
+def test_two_pass_uploads_only_collected_files(
+    strategy: StrategyFixture, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """
+    Other files in the working directory must never be uploaded, even when the
+    storage has an empty location (the django-storages default).
+    """
+    storage_class = import_string(strategy.backend)
+    monkeypatch.setattr(storage_class, "location", "", raising=False)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("SECRET=1")
+    (tmp_path / "private").mkdir()
+    (tmp_path / "private" / "secret.txt").write_text("SECRET=2")
+    storage = storage_class()
+    for key in (".env", "private/secret.txt"):
+        storage.bucket.Object(key).delete()
+    cache.clear()
+    clean_static_dir()
+    path = create_static_file()
+    try:
+        call_collectstatic()
+        keys = {obj.key for obj in storage.bucket.objects.all()}
+        assert path.name in keys
+        assert storage.manifest_name in keys
+        assert ".env" not in keys
+        assert "private/secret.txt" not in keys
+        # the first pass must not use the working directory as scratch space
+        assert not (tmp_path / storage.manifest_name).exists()
+        assert not (tmp_path / path.name).exists()
+    finally:
+        for obj in storage.bucket.objects.all():
+            if "/" not in obj.key or obj.key.startswith("private/"):
+                obj.delete()
+
+
+@aws_backends_only
+@two_pass_only
+@live_test
+def test_two_pass_does_not_upload_deleted_files(
+    strategy: StrategyFixture, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """A file deleted from the source must not be uploaded by later runs."""
+    monkeypatch.chdir(tmp_path)
+    storage = import_string(strategy.backend)()
+    cache.clear()
+    clean_static_dir()
+    create_static_file()
+    deleted = create_static_file()
+    call_collectstatic()
+
+    deleted.unlink()
+    for obj in storage.bucket.objects.filter(Prefix=f"{storage.location}/"):
+        if deleted.stem in obj.key:
+            obj.delete()
+    cache.clear()
+    call_collectstatic()
+
+    keys = [
+        obj.key for obj in storage.bucket.objects.filter(Prefix=f"{storage.location}/")
+    ]
+    assert not [key for key in keys if deleted.stem in key]
+
+
+@aws_backends_only
+@two_pass_only
+@live_test
+@pytest.mark.parametrize("keep_intermediate_files", [False, True])
+def test_two_pass_uploads_same_files_as_django(
+    strategy: StrategyFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    keep_intermediate_files: bool,
+) -> None:
+    """Including intermediate hashed files when the storage keeps them."""
+    storage_class = import_string(strategy.backend)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        storage_class, "location", f"same-{uuid.uuid4().hex}", raising=False
+    )
+    monkeypatch.setattr(
+        storage_class, "keep_intermediate_files", keep_intermediate_files
+    )
+    storage = storage_class()
+    clean_static_dir()
+    (static_dir / "img").mkdir()
+    (static_dir / "img" / "logo.png").write_bytes(b"png")
+    (static_dir / "b.css").write_text("p { background: url('img/logo.png'); }")
+    (static_dir / "a.css").write_text(
+        "@import url('b.css');\nbody { background: url('img/logo.png'); }"
+    )
+
+    def uploaded_keys() -> list[str]:
+        return sorted(
+            obj.key for obj in storage.bucket.objects.filter(Prefix=storage.location)
+        )
+
+    def delete_uploaded() -> None:
+        for key in uploaded_keys():
+            storage.bucket.Object(key).delete()
+        cache.clear()
+
+    try:
+        call_collectstatic(disable_collectfasta=True)
+        expected = uploaded_keys()
+        delete_uploaded()
+        call_collectstatic()
+        assert uploaded_keys() == expected
+    finally:
+        delete_uploaded()
+
+
+@aws_backends_only
+@two_pass_only
+@live_test
+@pytest.mark.parametrize("source", ["location_dir", "working_dir"])
+def test_two_pass_first_pass_output_is_not_collected_again(
+    strategy: StrategyFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    source: str,
+) -> None:
+    """
+    The first pass's output must never become a source for later runs, even when
+    the source folder is ./<location> or the working directory itself.
+    """
+    location = f"scratch-{uuid.uuid4().hex}"
+    storage_class = import_string(strategy.backend)
+    monkeypatch.setattr(storage_class, "location", location, raising=False)
+    monkeypatch.chdir(tmp_path)
+    source_dir = tmp_path / location if source == "location_dir" else tmp_path
+    source_dir.mkdir(exist_ok=True)
+    (source_dir / "app.css").write_text("body { color: red; }")
+    storage = storage_class()
+    cache.clear()
+    try:
+        with override_django_settings(STATICFILES_DIRS=[str(source_dir)]):
+            for _ in range(3):
+                call_collectstatic()
+        keys = sorted(
+            obj.key for obj in storage.bucket.objects.filter(Prefix=f"{location}/")
+        )
+        names = [key.removeprefix(f"{location}/") for key in keys]
+        assert len(names) == 3, names
+        assert "app.css" in names
+        assert storage.manifest_name in names
+        assert [n for n in names if n.startswith("app.") and n.count(".") == 2]
+        assert sorted(p.name for p in source_dir.glob("*.css")) == ["app.css"]
+    finally:
+        for obj in storage.bucket.objects.filter(Prefix=f"{location}/"):
+            obj.delete()

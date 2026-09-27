@@ -87,8 +87,8 @@ class S3StorageWrapperBase(S3Boto3Storage):
 
     def delete(self, name):
         super().delete(name)
-        if name in self._entries:
-            del self._entries[name]
+        # entries are keyed by the full object key, so normalise before purging
+        self._entries.pop(self._normalize_name(clean_name(name)), None)
 
     def exists(self, name):
         cleaned_name = self._normalize_name(clean_name(name))
@@ -131,6 +131,7 @@ class ManifestFilesWrapper(ManifestFilesMixin):
         for arg in [
             "hashed_files",
             "manifest_hash",
+            "manifest_name",
             "support_js_module_import_aggregation",
             "patterns",
             "_patterns",
@@ -153,6 +154,13 @@ class S3ManifestStaticStorageWrapper(
     S3StorageWrapperBase,
     S3ManifestStaticStorage,
 ):
+    def get_available_name(self, name, max_length=None):
+        # Django only ever reads the manifest back by its exact name, so it must
+        # be overwritten in place even when file_overwrite is False.
+        if clean_name(name) == self.manifest_name:
+            return clean_name(name)
+        return super().get_available_name(name, max_length)
+
     def _save(self, name, content):
         content.seek(0)
         with tempfile.SpooledTemporaryFile() as tmp:

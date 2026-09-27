@@ -1,3 +1,4 @@
+import posixpath
 from collections.abc import Callable
 from typing import Any
 from typing import Protocol
@@ -26,11 +27,33 @@ class HasLocationProtocol(Protocol):
     location: str
 
 
-class InMemoryManifestFilesStorage(ManifestFilesMixin, InMemoryStorage):
+# Where the first pass writes, relative to the working directory. A dot-directory,
+# so Django's default ignore patterns keep it out of collectstatic's sources.
+FIRST_PASS_ROOT = ".collectfasta"
+
+
+class RecordWritesMixin:
+    """Remember what this run wrote, so the second pass only copies those files."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.written_files: set[str] = set()
+        super().__init__(*args, **kwargs)
+
+    def _save(self, name: str, content: Any) -> str:
+        name = super()._save(name, content)  # type: ignore[misc]
+        self.written_files.add(name)
+        return name
+
+
+class InMemoryManifestFilesStorage(
+    RecordWritesMixin, ManifestFilesMixin, InMemoryStorage
+):
     url: Callable[..., Any]
 
 
-class FileSystemManifestFilesStorage(ManifestFilesMixin, FileSystemStorage):
+class FileSystemManifestFilesStorage(
+    RecordWritesMixin, ManifestFilesMixin, FileSystemStorage
+):
     url: Callable[..., Any]
 
 
@@ -69,8 +92,14 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
         # python 3.12 freezes types at runtime, which does not play nicely with
         # LazyObject so we need to cast the type here
         location = cast(HasLocationProtocol, self.original_storage).location
+        # never the working directory itself or a source folder like ./static
+        location = posixpath.join(FIRST_PASS_ROOT, location)
         assert issubclass(self.first_manifest_storage, LocationConstructorProtocol)
-        return self.first_manifest_storage(location=location)
+        storage = self.first_manifest_storage(location=location)
+        # post-process the same way the original storage would
+        for attr in ("manifest_name", "keep_intermediate_files"):
+            setattr(storage, attr, getattr(self.original_storage, attr))
+        return storage
 
     def wrap_storage(self, remote_storage: Storage) -> Storage:
         return self.remote_storage
