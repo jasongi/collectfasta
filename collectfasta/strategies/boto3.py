@@ -15,7 +15,6 @@ from storages.backends.s3boto3 import S3Boto3Storage
 from storages.backends.s3boto3 import S3ManifestStaticStorage
 from storages.backends.s3boto3 import S3StaticStorage
 from storages.utils import clean_name
-from storages.utils import get_available_overwrite_name
 from storages.utils import is_seekable
 from storages.utils import safe_join
 from storages.utils import setting
@@ -158,9 +157,8 @@ class S3ManifestStaticStorageWrapper(
     def get_available_name(self, name, max_length=None):
         # Django only ever reads the manifest back by its exact name, so it must
         # be overwritten in place even when file_overwrite is False.
-        name = clean_name(name)
-        if name == self.manifest_name:
-            return get_available_overwrite_name(name, max_length)
+        if clean_name(name) == self.manifest_name:
+            return clean_name(name)
         return super().get_available_name(name, max_length)
 
     def _save(self, name, content):
