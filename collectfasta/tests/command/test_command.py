@@ -1,9 +1,13 @@
 import timeit
+import uuid
+from typing import Any
 
 import pytest
 from django.core.exceptions import ImproperlyConfigured
+from django.core.files.base import ContentFile
 from django.test import override_settings as override_django_settings
 from django.test.utils import override_settings
+from django.utils.module_loading import import_string
 from pytest_mock import MockerFixture
 
 from collectfasta.management.commands.collectstatic import Command
@@ -322,3 +326,89 @@ def test_check_cache_size_no_warning_when_collectfasta_disabled(
     ):
         cmd._check_cache_size(100)
         mock_log.assert_not_called()
+
+
+def _s3_manifest_keys(storage: Any) -> list[str]:
+    """Keys in the bucket that look like the manifest, including suffixed copies."""
+    stem, ext = storage.manifest_name.rsplit(".", 1)
+    prefix = f"{storage.location}/{stem}"
+    return sorted(
+        obj.key
+        for obj in storage.bucket.objects.filter(Prefix=prefix)
+        if obj.key.endswith(f".{ext}")
+    )
+
+
+@aws_backends_only
+@two_pass_only
+@live_test
+@override_storage_attr("file_overwrite", False)
+def test_manifest_not_renamed_when_file_overwrite_false(
+    strategy: StrategyFixture,
+) -> None:
+    """
+    Regression test for https://github.com/jasongi/collectfasta/issues/19
+
+    With a location prefix and file_overwrite=False, re-running collectstatic
+    against a bucket that already holds the manifest must overwrite it in place
+    rather than saving it under a suffixed name like staticfiles_AbC123.json.
+    """
+    storage = import_string(strategy.backend)()
+    assert storage.location, "this bug only shows up with a location prefix"
+    expected_key = f"{storage.location}/{storage.manifest_name}"
+    # start from a clean slate so leftovers from earlier runs don't interfere
+    for key in _s3_manifest_keys(storage):
+        storage.bucket.Object(key).delete()
+
+    clean_static_dir()
+    create_two_referenced_static_files()
+    call_collectstatic()
+    assert _s3_manifest_keys(storage) == [expected_key]
+
+    # a second run, with the manifest already present in the bucket
+    create_two_referenced_static_files()
+    call_collectstatic()
+    assert _s3_manifest_keys(storage) == [expected_key]
+
+
+@aws_backends_only
+@override_storage_attr("file_overwrite", False)
+def test_s3_wrapper_exists_false_after_delete(strategy: StrategyFixture) -> None:
+    """
+    S3StorageWrapperBase caches entries keyed by the full (location-prefixed)
+    key, so delete() must purge the normalised name or exists() keeps reporting
+    a deleted object as present. See issue #19.
+    """
+    from collectfasta.strategies.boto3 import Boto3Strategy
+
+    wrapped = Boto3Strategy(import_string(strategy.backend)()).remote_storage
+    assert wrapped.location
+    name = f"{uuid.uuid4().hex}.txt"
+    wrapped.save(name, ContentFile(b"hello"))
+    assert wrapped.exists(name)
+
+    wrapped.delete(name)
+    assert not wrapped.exists(name)
+
+
+@aws_backends_only
+@live_test
+def test_manifest_saved_under_configured_manifest_name(
+    strategy: StrategyFixture,
+) -> None:
+    """
+    A storage subclass that sets its own manifest_name must have its manifest
+    written under that name, since that is the only name Django reads back.
+    """
+    storage = import_string(strategy.backend)()
+    if not hasattr(storage, "manifest_name"):
+        pytest.skip("not a manifest storage")
+    for key in _s3_manifest_keys(storage):
+        storage.bucket.Object(key).delete()
+
+    clean_static_dir()
+    create_two_referenced_static_files()
+    call_collectstatic()
+    assert storage.bucket.Object(
+        f"{storage.location}/{storage.manifest_name}"
+    ).content_length
