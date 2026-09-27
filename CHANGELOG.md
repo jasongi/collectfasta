@@ -1,4 +1,9 @@
 # Changelog
+## 3.3.5
+- fix the boto3 strategies saving files under a random suffix (e.g. `staticfiles_AbC123.json`) when the storage has a `location` prefix and `file_overwrite=False`. `delete()` did not purge its cached entry, so the file still appeared to exist when re-uploaded. See #19.
+- never rename the manifest when saving it with `S3ManifestStaticStorage`, even with `file_overwrite=False`, since Django only reads it back by its exact name
+- respect a custom `manifest_name` on the staticfiles storage in the boto3 and two-pass strategies
+
 ## 3.3.4
 - add support for Django 6.1
 - drop support for the end-of-life Django 4.2 release series

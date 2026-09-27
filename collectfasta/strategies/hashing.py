@@ -70,7 +70,12 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
         # LazyObject so we need to cast the type here
         location = cast(HasLocationProtocol, self.original_storage).location
         assert issubclass(self.first_manifest_storage, LocationConstructorProtocol)
-        return self.first_manifest_storage(location=location)
+        storage = self.first_manifest_storage(location=location)
+        # write the manifest under the name the original storage will read it back as
+        cast(ManifestFilesMixin, storage).manifest_name = cast(
+            ManifestFilesMixin, self.original_storage
+        ).manifest_name
+        return storage
 
     def wrap_storage(self, remote_storage: Storage) -> Storage:
         return self.remote_storage

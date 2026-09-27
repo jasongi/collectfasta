@@ -412,3 +412,36 @@ def test_manifest_saved_under_configured_manifest_name(
     assert storage.bucket.Object(
         f"{storage.location}/{storage.manifest_name}"
     ).content_length
+
+
+@aws_backends_only
+@override_storage_attr("file_overwrite", False)
+def test_manifest_overwritten_in_place_when_it_already_exists(
+    strategy: StrategyFixture,
+) -> None:
+    """
+    Even if the manifest is still in the bucket when it is saved (e.g. two
+    deploys running at once), it must keep its exact name, since that is the
+    only name Django reads back.
+    """
+    from collectfasta.strategies.boto3 import Boto3Strategy
+
+    wrapped = Boto3Strategy(import_string(strategy.backend)()).remote_storage
+    if not hasattr(wrapped, "manifest_name"):
+        pytest.skip("not a manifest storage")
+    for key in _s3_manifest_keys(wrapped):
+        wrapped.bucket.Object(key).delete()
+
+    manifest = ContentFile(b'{"version": "1.1", "paths": {}, "hash": ""}')
+    try:
+        wrapped.save(wrapped.manifest_name, manifest)
+        assert wrapped.exists(wrapped.manifest_name)
+        saved_name = wrapped.save(wrapped.manifest_name, manifest)
+
+        assert saved_name == wrapped.manifest_name
+        assert _s3_manifest_keys(wrapped) == [
+            f"{wrapped.location}/{wrapped.manifest_name}"
+        ]
+    finally:
+        for key in _s3_manifest_keys(wrapped):
+            wrapped.bucket.Object(key).delete()
