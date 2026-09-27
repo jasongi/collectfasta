@@ -4,7 +4,7 @@
 - never rename the manifest when saving it with `S3ManifestStaticStorage`, even with `file_overwrite=False`, since Django only reads it back by its exact name
 - respect a custom `manifest_name` on the staticfiles storage in the boto3 and two-pass strategies
 - fix the two-pass strategies uploading files that weren't collected. With `Boto3ManifestFileSystemStrategy` and an empty `location` (the django-storages default) this was the whole working directory, e.g. `.env` and `settings.py`. Only collected files, their hashed copies and the manifest are now uploaded.
-- `Boto3ManifestFileSystemStrategy` with an empty `location` now keeps its first-pass files in `.collectfasta/` instead of the working directory
+- `Boto3ManifestFileSystemStrategy` now writes its first-pass files to `.collectfasta/<location>/` instead of `./<location>/` (or the working directory itself when `location` is empty), so later runs can't pick them up as static files. The old `./<location>/` folder can be deleted; if it's also in your `STATICFILES_DIRS`, remove the hashed copies (e.g. `app.1a2b3c4d5e6f.css`) left in it.
 - respect `keep_intermediate_files` in the two-pass strategies
 
 ## 3.3.4

@@ -562,3 +562,44 @@ def test_two_pass_uploads_same_files_as_django(
         assert uploaded_keys() == expected
     finally:
         delete_uploaded()
+
+
+@aws_backends_only
+@two_pass_only
+@live_test
+@pytest.mark.parametrize("source", ["location_dir", "working_dir"])
+def test_two_pass_first_pass_output_is_not_collected_again(
+    strategy: StrategyFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    source: str,
+) -> None:
+    """
+    The first pass's output must never become a source for later runs, even when
+    the source folder is ./<location> or the working directory itself.
+    """
+    location = f"scratch-{uuid.uuid4().hex}"
+    storage_class = import_string(strategy.backend)
+    monkeypatch.setattr(storage_class, "location", location, raising=False)
+    monkeypatch.chdir(tmp_path)
+    source_dir = tmp_path / location if source == "location_dir" else tmp_path
+    source_dir.mkdir(exist_ok=True)
+    (source_dir / "app.css").write_text("body { color: red; }")
+    storage = storage_class()
+    cache.clear()
+    try:
+        with override_django_settings(STATICFILES_DIRS=[str(source_dir)]):
+            for _ in range(3):
+                call_collectstatic()
+        keys = sorted(
+            obj.key for obj in storage.bucket.objects.filter(Prefix=f"{location}/")
+        )
+        names = [key.removeprefix(f"{location}/") for key in keys]
+        assert len(names) == 3, names
+        assert "app.css" in names
+        assert storage.manifest_name in names
+        assert [n for n in names if n.startswith("app.") and n.count(".") == 2]
+        assert sorted(p.name for p in source_dir.glob("*.css")) == ["app.css"]
+    finally:
+        for obj in storage.bucket.objects.filter(Prefix=f"{location}/"):
+            obj.delete()

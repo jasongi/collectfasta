@@ -1,3 +1,4 @@
+import posixpath
 from collections.abc import Callable
 from typing import Any
 from typing import Protocol
@@ -26,7 +27,9 @@ class HasLocationProtocol(Protocol):
     location: str
 
 
-TMP_LOCATION_FOR_EMPTY_LOCATION = ".collectfasta"
+# Where the first pass writes, relative to the working directory. A dot-directory,
+# so Django's default ignore patterns keep it out of collectstatic's sources.
+FIRST_PASS_ROOT = ".collectfasta"
 
 
 class RecordWritesMixin:
@@ -89,8 +92,8 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
         # python 3.12 freezes types at runtime, which does not play nicely with
         # LazyObject so we need to cast the type here
         location = cast(HasLocationProtocol, self.original_storage).location
-        # an empty location would make the working directory the scratch space
-        location = location or TMP_LOCATION_FOR_EMPTY_LOCATION
+        # never the working directory itself or a source folder like ./static
+        location = posixpath.join(FIRST_PASS_ROOT, location)
         assert issubclass(self.first_manifest_storage, LocationConstructorProtocol)
         storage = self.first_manifest_storage(location=location)
         # post-process the same way the original storage would
