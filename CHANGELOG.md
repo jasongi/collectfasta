@@ -3,6 +3,9 @@
 - fix the boto3 strategies saving files under a random suffix (e.g. `staticfiles_AbC123.json`) when the storage has a `location` prefix and `file_overwrite=False`. `delete()` did not purge its cached entry, so the file still appeared to exist when re-uploaded. See #19.
 - never rename the manifest when saving it with `S3ManifestStaticStorage`, even with `file_overwrite=False`, since Django only reads it back by its exact name
 - respect a custom `manifest_name` on the staticfiles storage in the boto3 and two-pass strategies
+- fix the two-pass strategies uploading files that weren't collected. With `Boto3ManifestFileSystemStrategy` and an empty `location` (the django-storages default) this was the whole working directory, e.g. `.env` and `settings.py`. Only collected files, their hashed copies and the manifest are now uploaded.
+- `Boto3ManifestFileSystemStrategy` with an empty `location` now keeps its first-pass files in `.collectfasta/` instead of the working directory
+- respect `keep_intermediate_files` in the two-pass strategies
 
 ## 3.3.4
 - add support for Django 6.1

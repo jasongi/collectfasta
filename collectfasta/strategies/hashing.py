@@ -26,11 +26,31 @@ class HasLocationProtocol(Protocol):
     location: str
 
 
-class InMemoryManifestFilesStorage(ManifestFilesMixin, InMemoryStorage):
+TMP_LOCATION_FOR_EMPTY_LOCATION = ".collectfasta"
+
+
+class RecordWritesMixin:
+    """Remember what this run wrote, so the second pass only copies those files."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self.written_files: set[str] = set()
+        super().__init__(*args, **kwargs)
+
+    def _save(self, name: str, content: Any) -> str:
+        name = super()._save(name, content)  # type: ignore[misc]
+        self.written_files.add(name)
+        return name
+
+
+class InMemoryManifestFilesStorage(
+    RecordWritesMixin, ManifestFilesMixin, InMemoryStorage
+):
     url: Callable[..., Any]
 
 
-class FileSystemManifestFilesStorage(ManifestFilesMixin, FileSystemStorage):
+class FileSystemManifestFilesStorage(
+    RecordWritesMixin, ManifestFilesMixin, FileSystemStorage
+):
     url: Callable[..., Any]
 
 
@@ -69,12 +89,13 @@ class HashingTwoPassStrategy(HashStrategy[Storage]):
         # python 3.12 freezes types at runtime, which does not play nicely with
         # LazyObject so we need to cast the type here
         location = cast(HasLocationProtocol, self.original_storage).location
+        # an empty location would make the working directory the scratch space
+        location = location or TMP_LOCATION_FOR_EMPTY_LOCATION
         assert issubclass(self.first_manifest_storage, LocationConstructorProtocol)
         storage = self.first_manifest_storage(location=location)
-        # write the manifest under the name the original storage will read it back as
-        cast(ManifestFilesMixin, storage).manifest_name = cast(
-            ManifestFilesMixin, self.original_storage
-        ).manifest_name
+        # post-process the same way the original storage would
+        for attr in ("manifest_name", "keep_intermediate_files"):
+            setattr(storage, attr, getattr(self.original_storage, attr))
         return storage
 
     def wrap_storage(self, remote_storage: Storage) -> Storage:

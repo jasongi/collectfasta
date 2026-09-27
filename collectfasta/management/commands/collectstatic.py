@@ -1,4 +1,3 @@
-from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -17,20 +16,21 @@ from collectfasta.strategies import load_strategy
 Task = tuple[str, str, Storage]
 
 
-def collect_from_folder(
-    storage: Storage, path: str = ""
-) -> Generator[tuple[str, str], str, None]:
-    folders, files = storage.listdir(path)
-    for thefile in files:
-        if path:
-            prefixed = f"{path}/{thefile}"
-        else:
-            prefixed = thefile
-        yield prefixed, prefixed
-    for folder in folders:
-        if path:
-            folder = f"{path}/{folder}"
-        yield from collect_from_folder(storage, folder)
+def first_pass_files(
+    storage: Storage, found_files: dict[str, tuple[Storage, str]]
+) -> list[str]:
+    """
+    The files the first pass wrote to its temporary storage: the collected files,
+    their hashed copies (and intermediates, if kept) and the manifest. Anything
+    else in there is not ours.
+    """
+    names = set(found_files)
+    names.update(getattr(storage, "hashed_files", {}).values())
+    names.update(getattr(storage, "written_files", ()))
+    manifest_name = getattr(storage, "manifest_name", None)
+    if manifest_name:
+        names.add(manifest_name)
+    return [name for name in sorted(names) if storage.exists(name)]
 
 
 class Command(collectstatic.Command):
@@ -87,16 +87,14 @@ class Command(collectstatic.Command):
             self.storage = second_pass_strategy.wrap_storage(self.storage)
             self.strategy = second_pass_strategy
             self.log(f"Running second pass with {self.strategy.__class__.__name__}...")
+            files = first_pass_files(source_storage, self.found_files)
             if settings.threads and settings.threads > 1:
-                tasks = [
-                    (f, prefixed, source_storage)
-                    for f, prefixed in collect_from_folder(source_storage)
-                ]
+                tasks = [(f, f, source_storage) for f in files]
                 with ThreadPoolExecutor(settings.threads) as pool:
                     pool.map(self.maybe_copy_file, tasks)
             else:
-                for f, prefixed in collect_from_folder(source_storage):
-                    self.maybe_copy_file((f, prefixed, source_storage))
+                for f in files:
+                    self.maybe_copy_file((f, f, source_storage))
             return {
                 "modified": self.copied_files + self.symlinked_files,
                 "unmodified": self.unmodified_files,

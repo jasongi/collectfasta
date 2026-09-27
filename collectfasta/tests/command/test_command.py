@@ -1,8 +1,10 @@
+import pathlib
 import timeit
 import uuid
 from typing import Any
 
 import pytest
+from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.base import ContentFile
 from django.test import override_settings as override_django_settings
@@ -26,6 +28,7 @@ from collectfasta.tests.utils import create_two_referenced_static_files
 from collectfasta.tests.utils import make_100_files
 from collectfasta.tests.utils import override_setting
 from collectfasta.tests.utils import override_storage_attr
+from collectfasta.tests.utils import static_dir
 
 from .utils import call_collectstatic
 
@@ -445,3 +448,117 @@ def test_manifest_overwritten_in_place_when_it_already_exists(
     finally:
         for key in _s3_manifest_keys(wrapped):
             wrapped.bucket.Object(key).delete()
+
+
+@aws_backends_only
+@two_pass_only
+@live_test
+def test_two_pass_uploads_only_collected_files(
+    strategy: StrategyFixture, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """
+    Other files in the working directory must never be uploaded, even when the
+    storage has an empty location (the django-storages default).
+    """
+    storage_class = import_string(strategy.backend)
+    monkeypatch.setattr(storage_class, "location", "", raising=False)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("SECRET=1")
+    (tmp_path / "private").mkdir()
+    (tmp_path / "private" / "secret.txt").write_text("SECRET=2")
+    storage = storage_class()
+    for key in (".env", "private/secret.txt"):
+        storage.bucket.Object(key).delete()
+    cache.clear()
+    clean_static_dir()
+    path = create_static_file()
+    try:
+        call_collectstatic()
+        keys = {obj.key for obj in storage.bucket.objects.all()}
+        assert path.name in keys
+        assert storage.manifest_name in keys
+        assert ".env" not in keys
+        assert "private/secret.txt" not in keys
+        # the first pass must not use the working directory as scratch space
+        assert not (tmp_path / storage.manifest_name).exists()
+        assert not (tmp_path / path.name).exists()
+    finally:
+        for obj in storage.bucket.objects.all():
+            if "/" not in obj.key or obj.key.startswith("private/"):
+                obj.delete()
+
+
+@aws_backends_only
+@two_pass_only
+@live_test
+def test_two_pass_does_not_upload_deleted_files(
+    strategy: StrategyFixture, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """A file deleted from the source must not be uploaded by later runs."""
+    monkeypatch.chdir(tmp_path)
+    storage = import_string(strategy.backend)()
+    cache.clear()
+    clean_static_dir()
+    create_static_file()
+    deleted = create_static_file()
+    call_collectstatic()
+
+    deleted.unlink()
+    for obj in storage.bucket.objects.filter(Prefix=f"{storage.location}/"):
+        if deleted.stem in obj.key:
+            obj.delete()
+    cache.clear()
+    call_collectstatic()
+
+    keys = [
+        obj.key for obj in storage.bucket.objects.filter(Prefix=f"{storage.location}/")
+    ]
+    assert not [key for key in keys if deleted.stem in key]
+
+
+@aws_backends_only
+@two_pass_only
+@live_test
+@pytest.mark.parametrize("keep_intermediate_files", [False, True])
+def test_two_pass_uploads_same_files_as_django(
+    strategy: StrategyFixture,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    keep_intermediate_files: bool,
+) -> None:
+    """Including intermediate hashed files when the storage keeps them."""
+    storage_class = import_string(strategy.backend)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        storage_class, "location", f"same-{uuid.uuid4().hex}", raising=False
+    )
+    monkeypatch.setattr(
+        storage_class, "keep_intermediate_files", keep_intermediate_files
+    )
+    storage = storage_class()
+    clean_static_dir()
+    (static_dir / "img").mkdir()
+    (static_dir / "img" / "logo.png").write_bytes(b"png")
+    (static_dir / "b.css").write_text("p { background: url('img/logo.png'); }")
+    (static_dir / "a.css").write_text(
+        "@import url('b.css');\nbody { background: url('img/logo.png'); }"
+    )
+
+    def uploaded_keys() -> list[str]:
+        return sorted(
+            obj.key for obj in storage.bucket.objects.filter(Prefix=storage.location)
+        )
+
+    def delete_uploaded() -> None:
+        for key in uploaded_keys():
+            storage.bucket.Object(key).delete()
+        cache.clear()
+
+    try:
+        call_collectstatic(disable_collectfasta=True)
+        expected = uploaded_keys()
+        delete_uploaded()
+        call_collectstatic()
+        assert uploaded_keys() == expected
+    finally:
+        delete_uploaded()
